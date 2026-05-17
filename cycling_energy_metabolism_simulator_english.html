@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Cycling Energy Systems Game</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: rgba(14, 20, 31, 0.86);
+      --panel2: rgba(22, 32, 48, 0.92);
+      --ink: #e6edf3;
+      --muted: #9fb2c8;
+      --blue: #5aa9ff;
+      --orange: #ffb84d;
+      --red: #ff6b5f;
+      --cyan: #52d1dc;
+      --green: #72d572;
+      --yellow: #ffd166;
+      --purple: #9b39b5;
+      --road: #272b35;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 25% 5%, #243a63 0%, #0d1117 46%, #070a10 100%);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 392px;
+      gap: 12px;
+      width: 100vw;
+      height: 100vh;
+      padding: 12px;
+    }
+
+    .main, .side {
+      border: 1px solid rgba(255,255,255,0.14);
+      background: var(--panel);
+      border-radius: 22px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.38);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .main canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+
+    .hud {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      right: 18px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .metric {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(8,12,18,0.54);
+      backdrop-filter: blur(7px);
+      border-radius: 16px;
+      padding: 10px 12px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .02em;
+    }
+
+    .metric .value {
+      margin-top: 2px;
+      font-size: clamp(18px, 2.4vw, 30px);
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .metric .unit {
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: 2px;
+      font-weight: 500;
+    }
+
+    .tapButton {
+      position: absolute;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      width: min(440px, calc(100% - 44px));
+      border: 0;
+      border-radius: 999px;
+      padding: 18px 22px;
+      color: #071018;
+      background: linear-gradient(135deg, #e8f3ff, #77d4ff 50%, #52ffd5);
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      box-shadow: 0 12px 36px rgba(0, 221, 255, 0.24), inset 0 -3px 0 rgba(0,0,0,.20);
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .tapButton:active, .tapButton.active {
+      transform: translateX(-50%) translateY(2px) scale(0.99);
+      box-shadow: 0 8px 22px rgba(0, 221, 255, 0.18), inset 0 3px 0 rgba(0,0,0,.18);
+    }
+
+    .side {
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.2;
+      margin: 2px 0 6px;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.42;
+      margin-bottom: 12px;
+    }
+
+    .thresholds {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 10px 0 12px;
+    }
+
+    .threshold {
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.11);
+      background: rgba(255,255,255,0.055);
+      padding: 9px 10px;
+      transition: .2s ease;
+    }
+
+    .threshold .tag {
+      font-size: 12px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .threshold .tag::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.32);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.04);
+    }
+
+    .threshold .txt {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.28;
+      color: var(--muted);
+    }
+
+    .threshold.warn1 {
+      background: rgba(255, 209, 102, .16);
+      border-color: rgba(255, 209, 102, .45);
+    }
+
+    .threshold.warn1 .tag::before { background: var(--yellow); box-shadow: 0 0 16px rgba(255,209,102,.7); }
+
+    .threshold.warn2 {
+      background: rgba(255, 107, 95, .18);
+      border-color: rgba(255, 107, 95, .55);
+      animation: pulse 1.2s ease-in-out infinite alternate;
+    }
+
+    .threshold.warn2 .tag::before { background: var(--red); box-shadow: 0 0 18px rgba(255,107,95,.85); }
+
+    @keyframes pulse {
+      from { filter: saturate(1); }
+      to { filter: saturate(1.5) brightness(1.08); }
+    }
+
+    .gaugeCard {
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 18px;
+      background: var(--panel2);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .hrHudRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .heartIcon {
+      font-size: 27px;
+      line-height: 1;
+      transform-origin: 50% 58%;
+      will-change: transform;
+      filter: drop-shadow(0 0 12px rgba(255,107,95,.72));
+      color: var(--red);
+    }
+
+    .hrHudText {
+      min-width: 0;
+    }
+
+    .hrZonePill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      margin-top: 4px;
+      font-size: 10.5px;
+      font-weight: 900;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      white-space: nowrap;
+    }
+
+    .powerZonePill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      margin-top: 4px;
+      font-size: 10.5px;
+      font-weight: 900;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      white-space: nowrap;
+    }
+
+    .bonkMessage {
+      position: absolute;
+      left: 50%;
+      top: 43%;
+      transform: translate(-50%, -50%) scale(1);
+      z-index: 32;
+      width: min(620px, calc(100% - 36px));
+      padding: 18px 22px;
+      border-radius: 22px;
+      border: 2px solid rgba(255, 107, 95, .78);
+      background: linear-gradient(135deg, rgba(90, 12, 22, .94), rgba(255, 107, 95, .88));
+      color: #fff;
+      box-shadow: 0 22px 70px rgba(255, 52, 52, .34), inset 0 0 0 1px rgba(255,255,255,.18);
+      text-align: center;
+      font-weight: 950;
+      font-size: clamp(18px, 2.8vw, 34px);
+      line-height: 1.25;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity .25s ease, transform .25s ease;
+      text-shadow: 0 2px 8px rgba(0,0,0,.28);
+    }
+
+    .bonkMessage.hidden {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(.92);
+    }
+
+    .barHead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+
+    .barName {
+      font-weight: 800;
+      font-size: 13.5px;
+    }
+
+    .barValue {
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .barTrack {
+      width: 100%;
+      height: 13px;
+      background: rgba(255,255,255,0.10);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .barFill {
+      height: 100%;
+      border-radius: 999px;
+      width: 100%;
+      transition: width .12s linear;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 11.2px;
+      line-height: 1.35;
+      margin-top: 7px;
+    }
+
+    .substrateStack {
+      display: flex;
+      width: 100%;
+      height: 22px;
+      overflow: hidden;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.13);
+      background: rgba(0,0,0,.2);
+      margin: 8px 0 9px;
+    }
+
+    .seg {
+      height: 100%;
+      min-width: 0;
+      transition: width .18s linear;
+    }
+
+    .substrateGrid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      font-size: 10.8px;
+      color: var(--muted);
+    }
+
+    .mixItem {
+      min-width: 0;
+      padding: 4px 5px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.045);
+      line-height: 1.15;
+    }
+
+    .mixItem b {
+      display: block;
+      margin-top: 2px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+    }
+
+    .substrateGrid b {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+
+    .zone {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 10px;
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .zone b { color: var(--ink); }
+
+    .status {
+      margin-top: 12px;
+      padding: 13px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(82, 209, 220, .11), rgba(255, 184, 77, .08));
+      border: 1px solid rgba(255,255,255,0.10);
+      min-height: 96px;
+    }
+
+    .status .big {
+      font-size: 16.5px;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    .status p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.42;
+    }
+
+    .help {
+      margin-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding-top: 11px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.42;
+    }
+
+    .miniChart {
+      width: 100%;
+      height: 74px;
+      display: block;
+      margin-top: 8px;
+      background: rgba(0,0,0,0.17);
+      border-radius: 12px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px 10px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+
+
+
+    .introOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(5, 9, 16, 0.72);
+      backdrop-filter: blur(8px);
+    }
+
+    .introOverlay.hidden {
+      display: none;
+    }
+
+    .introCard {
+      width: min(760px, calc(100vw - 28px));
+      max-height: min(88vh, 900px);
+      overflow: auto;
+      border-radius: 24px;
+      padding: 24px 24px 22px;
+      background: linear-gradient(180deg, rgba(18, 27, 41, 0.96), rgba(10, 16, 26, 0.97));
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 24px 90px rgba(0,0,0,0.48);
+    }
+
+    .introTitle {
+      margin: 0 0 14px;
+      font-size: clamp(24px, 3.3vw, 38px);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      text-align: center;
+    }
+
+    .introCard .help {
+      margin-top: 0;
+      border-top: 0;
+      padding-top: 0;
+      color: var(--ink);
+      font-size: clamp(14px, 1.45vw, 16px);
+      line-height: 1.7;
+    }
+
+    .introCard .help b {
+      color: #ffffff;
+    }
+
+    .startButton {
+      display: block;
+      width: min(320px, 100%);
+      margin: 18px auto 0;
+      border: 0;
+      border-radius: 999px;
+      padding: 16px 20px;
+      color: #071018;
+      background: linear-gradient(135deg, #ecf6ff, #7cd3ff 46%, #59ffd8);
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .03em;
+      box-shadow: 0 12px 34px rgba(0, 221, 255, 0.24), inset 0 -3px 0 rgba(0,0,0,.18);
+      cursor: pointer;
+    }
+
+    .startButton:active {
+      transform: translateY(2px) scale(0.99);
+      box-shadow: 0 8px 22px rgba(0, 221, 255, 0.18), inset 0 3px 0 rgba(0,0,0,.18);
+    }
+
+    @media (max-width: 920px) {
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .app {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 100svh;
+        padding: 6px;
+      }
+
+      .main {
+        width: 100%;
+        height: 100%;
+        border-radius: 16px;
+      }
+
+      .hud {
+        left: 6px;
+        right: 6px;
+        top: 6px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
+        z-index: 12;
+      }
+
+      .metric {
+        min-width: 0;
+        padding: 5px 5px;
+        border-radius: 10px;
+        background: rgba(8,12,18,0.62);
+      }
+
+      .metric .label {
+        font-size: 8.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .metric .value {
+        font-size: clamp(12px, 3.4vw, 16px);
+        line-height: 1.05;
+      }
+
+      .metric .unit {
+        display: block;
+        margin-left: 0;
+        margin-top: 1px;
+        font-size: 7.7px;
+        line-height: 1;
+      }
+
+      .hrHudRow { gap: 3px; }
+      .heartIcon { font-size: 16px; filter: drop-shadow(0 0 7px rgba(255,107,95,.7)); }
+      .hrZonePill, .powerZonePill { font-size: 7px; padding: 1px 4px; margin-top: 1px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+      .side {
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        bottom: 66px;
+        height: min(35vh, 280px);
+        z-index: 11;
+        padding: 7px;
+        border-radius: 14px;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+        background: rgba(8, 12, 18, 0.70);
+        backdrop-filter: blur(8px);
+      }
+
+      .title, .sub, .help, .zone { display: none; }
+
+      .introOverlay .help { display: block; }
+
+      .thresholds {
+        grid-column: 1 / -1;
+        margin: 0;
+        gap: 5px;
+      }
+
+      .threshold {
+        padding: 5px 7px;
+        border-radius: 10px;
+      }
+
+      .threshold .tag { font-size: 10px; }
+
+      .gaugeCard {
+        margin: 0;
+        padding: 6px;
+        border-radius: 10px;
+        min-width: 0;
+      }
+
+      .barHead {
+        margin-bottom: 3px;
+        gap: 4px;
+      }
+
+      .barName {
+        font-size: 9.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .barValue {
+        font-size: 9.5px;
+      }
+
+      .barTrack { height: 7px; }
+
+      .mixCard {
+        grid-column: 1 / -1;
+      }
+
+      .mixCard .barHead {
+        display: none;
+      }
+
+      .substrateStack {
+        height: 10px;
+        margin: 0 0 4px;
+      }
+
+      .substrateGrid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 3px;
+        font-size: 7.2px;
+      }
+
+      .mixItem {
+        padding: 2px 3px;
+        border-radius: 7px;
+      }
+
+      .mixItem b {
+        margin-top: 1px;
+        font-size: 8.3px;
+      }
+
+      .swatch {
+        width: 7px;
+        height: 7px;
+        border-radius: 2px;
+        margin-right: 2px;
+      }
+
+      .miniChart {
+        grid-column: 1 / -1;
+        height: 45px;
+        margin: 0;
+        border-radius: 9px;
+      }
+
+      .legend {
+        grid-column: 1 / -1;
+        margin-top: -2px;
+        gap: 4px 8px;
+        justify-content: center;
+        font-size: 8.5px;
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        margin-right: 3px;
+      }
+
+      .status {
+        grid-column: 1 / -1;
+        margin-top: 0;
+        min-height: 0;
+        padding: 6px 8px;
+        border-radius: 10px;
+      }
+
+      .status .big {
+        font-size: 11.5px;
+        margin-bottom: 0;
+      }
+
+      .status p { display: none; }
+
+      .tapButton {
+        bottom: 8px;
+        z-index: 12;
+        width: calc(100% - 16px);
+        padding: 12px 14px;
+        font-size: 15px;
+      }
+    }
+
+    @media (max-width: 420px) and (max-height: 760px) {
+      .side {
+        height: min(31vh, 244px);
+        gap: 4px;
+        padding: 6px;
+        bottom: 60px;
+      }
+
+      .threshold { padding: 4px 6px; }
+      .gaugeCard { padding: 5px; }
+      .barName, .barValue { font-size: 8.8px; }
+      .miniChart { height: 38px; }
+      .legend { display: none; }
+      .status { padding: 5px 7px; }
+      .tapButton { bottom: 6px; padding: 10px 12px; }
+
+      .introOverlay {
+        padding: 10px;
+      }
+
+      .introCard {
+        width: min(100vw - 12px, 760px);
+        max-height: 90dvh;
+        border-radius: 18px;
+        padding: 16px 14px 16px;
+      }
+
+      .introTitle {
+        margin-bottom: 10px;
+        font-size: clamp(22px, 6vw, 30px);
+      }
+
+      .introCard .help {
+        display: block;
+        font-size: 13.5px;
+        line-height: 1.6;
+      }
+
+      .startButton {
+        width: 100%;
+        font-size: 17px;
+        padding: 14px 16px;
+      }
+    }
+
+    @media (orientation: landscape) and (max-width: 920px) {
+      .side {
+        left: auto;
+        top: 58px;
+        bottom: 58px;
+        right: 8px;
+        width: min(46vw, 360px);
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="introOverlay" class="introOverlay" role="dialog" aria-modal="true" aria-label="Game start instructions">
+    <div class="introCard">
+      <h1 class="introTitle">Cycling Energy Metabolism Simulator</h1>
+      <div class="help">
+<b>Introduction:</b> By simulating energy metabolism at <b>different cycling intensities</b>, this game helps you experience dynamic ATP supply from <b>ATP-CP, anaerobic glycolysis, and the aerobic system</b>, together with lactate, heart-rate, and local fatigue responses.<br><br><b>Controls:</b> On desktop, press <b>Space</b> or click the <b>Pedal</b> button. On mobile, tap the <b>Pedal</b> button. Try using the same finger continuously to better feel local fatigue and soreness.<br><br><b>Reference tap rates:</b><br><b>- Active recovery:</b> <b>1 tap/s</b>, cadence about <b>50 rpm</b>, power-to-weight about <b>1.2 W/kg</b><br><b>- Endurance pace:</b> about <b>2 taps/s</b>, cadence about <b>85 rpm</b>, power-to-weight about <b>2.5 W/kg</b><br><b>- Sprint pace:</b> <b>&gt; 4 taps/s</b>, cadence <b>&gt; 95 rpm</b>, power-to-weight <b>&gt; 4 W/kg</b>. When the recent ~1-second tap rate suddenly exceeds <b>5 taps/s</b>, the system immediately detects sprint intent.
+      </div>
+      <button id="startButton" class="startButton">Start</button>
+    </div>
+  </div>
+
+  <div class="app">
+    <section class="main" aria-label="Cycling game panel">
+      <canvas id="gameCanvas"></canvas>
+      <div id="bonkMessage" class="bonkMessage hidden">You are blown up! Your ATP-CP reserve is exhausted. Rest for a moment!</div>
+      <div class="hud">
+        <div class="metric"><div class="label">Speed</div><div class="value"><span id="speed">0.0</span><span class="unit">km/h</span></div></div>
+        <div class="metric"><div class="label">Cadence</div><div class="value"><span id="cadence">0</span><span class="unit">rpm</span></div></div>
+        <div id="powerMetric" class="metric powerMetric"><div class="label">Power/Weight</div><div class="value"><span id="powerKg">0.0</span><span class="unit">W/kg</span></div><div id="powerZone" class="powerZonePill">Z1 Active Recovery</div></div>
+        <div id="hrMetric" class="metric hrMetric">
+          <div class="label">Heart Rate</div>
+          <div class="hrHudRow">
+            <div id="heartIcon" class="heartIcon">♥</div>
+            <div class="hrHudText">
+              <div class="value"><span id="hrVal">80</span><span class="unit">bpm</span></div>
+              <div id="hrZone" class="hrZonePill">Z1 Recovery</div>
+            </div>
+          </div>
+        </div>
+        <div class="metric"><div class="label">Distance</div><div class="value"><span id="distance">0.00</span><span class="unit">km</span></div></div>
+      </div>
+      <button id="tapButton" class="tapButton">Pedal</button>
+    </section>
+
+    <aside class="side" aria-label="Energy system panel">
+      <div class="title">Cycling Energy Metabolism Simulator</div>
+      
+      <div class="thresholds">
+        <div id="lt1Box" class="threshold">
+          <div class="tag">Lactate Threshold 1 (LT1)</div>
+        </div>
+        <div id="lt2Box" class="threshold">
+          <div class="tag">Lactate Threshold 2 (LT2)</div>
+        </div>
+      </div>
+
+      <div class="gaugeCard">
+        <div class="barHead"><div class="barName">ATP–CP Reserve</div><div class="barValue"><span id="cpVal">100</span>%</div></div>
+        <div class="barTrack"><div id="cpBar" class="barFill" style="background: linear-gradient(90deg, var(--blue), #b8e1ff);"></div></div>
+      </div>
+
+      <div class="gaugeCard">
+        <div class="barHead"><div class="barName">Anaerobic Glycolysis Reserve</div><div class="barValue"><span id="glyVal">100</span>%</div></div>
+        <div class="barTrack"><div id="glyBar" class="barFill" style="background: linear-gradient(90deg, var(--red), var(--orange));"></div></div>
+      </div>
+
+      <div class="gaugeCard">
+        <div class="barHead"><div class="barName">Relative Aerobic ATP</div><div class="barValue"><span id="aeroVal">100</span>%total ATP</div></div>
+        <div class="barTrack"><div id="aeroBar" class="barFill" style="background: linear-gradient(90deg, var(--green), var(--cyan)); width: 100%;"></div></div>
+      </div>
+
+      <div class="gaugeCard">
+        <div class="barHead"><div class="barName">Estimated Blood Lactate</div><div class="barValue"><span id="lacVal">1.2</span> mmol/L</div></div>
+        <div class="barTrack"><div id="lacBar" class="barFill" style="background: linear-gradient(90deg, var(--yellow), var(--red)); width: 8%;"></div></div>
+      </div>
+
+
+      <div class="gaugeCard mixCard">
+        <div class="barHead"><div class="barName">Current ATP Supply / Substrate Mix</div><div class="barValue"><span id="intensityVal">0</span>% estimated VO₂max</div></div>
+        <div class="substrateStack">
+          <div id="segCp" class="seg" style="background:#d7ecff"></div>
+          <div id="segGlycogen" class="seg" style="background:#4d90d0"></div>
+          <div id="segGlucose" class="seg" style="background:#de5545"></div>
+          <div id="segFfa" class="seg" style="background:#8ec66d"></div>
+          <div id="segMt" class="seg" style="background:#8a2a91"></div>
+        </div>
+        <div class="substrateGrid">
+          <span class="mixItem"><i class="swatch" style="background:#d7ecff"></i>ATP–CP <b><span id="mixCp">0</span>%</b></span>
+          <span class="mixItem"><i class="swatch" style="background:#4d90d0"></i>Muscle Glycogen <b><span id="mixGlycogen">0</span>%</b></span>
+          <span class="mixItem"><i class="swatch" style="background:#de5545"></i>Blood Glucose <b><span id="mixGlucose">0</span>%</b></span>
+          <span class="mixItem"><i class="swatch" style="background:#8ec66d"></i>Plasma FFA <b><span id="mixFfa">0</span>%</b></span>
+          <span class="mixItem"><i class="swatch" style="background:#8a2a91"></i>IMTG <b><span id="mixMt">0</span>%</b></span>
+        </div>
+      </div>
+
+      <canvas id="miniChart" class="miniChart" width="340" height="74"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:#d7ecff"></i>ATP–CP</span>
+        <span><i class="dot" style="background:#4d90d0"></i>Muscle Glycogen</span>
+        <span><i class="dot" style="background:#de5545"></i>Blood Glucose</span>
+        <span><i class="dot" style="background:#8ec66d"></i>Plasma FFA</span>
+        <span><i class="dot" style="background:#8a2a91"></i>IMTG</span>
+      </div>
+
+      <div class="status">
+        <div id="zoneName" class="big">Ready</div>
+        <p id="zoneText">Tap or press Space. ~20 taps/10 s is endurance; >45 taps/10 s unlocks explosive sprint output.</p>
+      </div>
+
+      <div class="help">
+  Controls: on desktop, press <b>Space</b> or click the <b>Pedal</b> button. On mobile, tap the <b>Pedal</b> button. Try using the same finger continuously to better feel local fatigue and soreness.<br><br><b>Reference tap rates:</b><br><b>- Active recovery:</b> <b>1 tap/s</b>, cadence about <b>50 rpm</b>, power-to-weight about <b>1.2 W/kg</b><br><b>- Endurance pace:</b> about <b>2 taps/s</b>, cadence about <b>85 rpm</b>, power-to-weight about <b>2.5 W/kg</b><br><b>- Sprint pace:</b> <b>&gt; 4 taps/s</b>, cadence <b>&gt; 95 rpm</b>, power-to-weight <b>&gt; 4 W/kg</b>. When the recent ~1-second tap rate suddenly exceeds <b>5 taps/s</b>, the system immediately detects sprint intent.
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const chart = document.getElementById('miniChart');
+    const cctx = chart.getContext('2d');
+    const tapButton = document.getElementById('tapButton');
+    const bonkMessage = document.getElementById('bonkMessage');
+    let bonkHideTimer = null;
+    const introOverlay = document.getElementById('introOverlay');
+    const startButton = document.getElementById('startButton');
+    let gameStarted = false;
+
+    const $ = id => document.getElementById(id);
+    const BODY_MASS_KG = 80;
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    const smoothApproach = (current, target, rate, dt) => current + (target - current) * (1 - Math.exp(-rate * dt));
+    const rand = (a, b) => a + Math.random() * (b - a);
+    function randNormal(mean = 0, sd = 1) {
+      // Box-Muller: used for realistic group-ride speed variation.
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    // Simplified flat-road cycling physics used only for the game speed response.
+    // Drag force rises with v^2, so drag power rises with v^3; this makes sprint
+    // acceleration punchy at low speed but progressively harder near 50 km/h.
+    const BIKE_MASS_KG = 8.0;
+    const SYSTEM_MASS_KG = BODY_MASS_KG + BIKE_MASS_KG;
+    const AIR_DENSITY = 1.226;
+    const CDA_ROAD_POSITION = 0.28;
+    const C_ROLLING = 0.0045;
+    const DRIVETRAIN_EFFICIENCY = 0.96;
+
+    function resistivePowerAtSpeedKmh(speedKmh) {
+      const v = Math.max(0, speedKmh) / 3.6;
+      const rollingPower = C_ROLLING * SYSTEM_MASS_KG * 9.81 * v;
+      const aeroPower = 0.5 * AIR_DENSITY * CDA_ROAD_POSITION * v * v * v;
+      return rollingPower + aeroPower;
+    }
+
+    function speedFromPowerWatts(powerWatts) {
+      const availablePower = Math.max(0, powerWatts) * DRIVETRAIN_EFFICIENCY;
+      let lo = 0, hi = 62;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        if (resistivePowerAtSpeedKmh(mid) <= availablePower) lo = mid;
+        else hi = mid;
+      }
+      return lo;
+    }
+
+    let W = 900, H = 540, DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    function makeCloud(x = null) {
+      const scale = 0.78 + Math.random() * 0.92;
+      const width = 120 * scale;
+      return {
+        x: x == null ? Math.random() * (W + width) - width * 0.4 : x,
+        y: H * (0.08 + Math.random() * 0.22),
+        scale,
+        alpha: 0.52 + Math.random() * 0.24,
+        drift: 0.82 + Math.random() * 0.68,
+        bob: Math.random() * Math.PI * 2
+      };
+    }
+
+    function resetClouds() {
+      const count = Math.max(4, Math.min(7, Math.round(W / 180)));
+      state.clouds = Array.from({ length: count }, (_, i) => makeCloud((i / count) * (W + 180) - 80));
+    }
+
+    function updateClouds(dt) {
+      if (!state.clouds.length) resetClouds();
+      for (const cloud of state.clouds) {
+        const driftPx = (6 + state.speed * 0.28) * cloud.drift;
+        cloud.x -= driftPx * dt;
+        cloud.bob += dt * (0.14 + cloud.drift * 0.03);
+        const width = 120 * cloud.scale;
+        if (cloud.x < -width * 1.5) {
+          const next = makeCloud(W + width * (0.3 + Math.random() * 0.9));
+          cloud.x = next.x;
+          cloud.y = next.y;
+          cloud.scale = next.scale;
+          cloud.alpha = next.alpha;
+          cloud.drift = next.drift;
+          cloud.bob = next.bob;
+        }
+      }
+    }
+
+    function drawCloud(cloud) {
+      const x = cloud.x;
+      const y = cloud.y + Math.sin(cloud.bob + state.t * 0.4) * 4;
+      const s = cloud.scale;
+      ctx.save();
+      ctx.fillStyle = `rgba(255,255,255,${cloud.alpha})`;
+      ctx.beginPath();
+      ctx.ellipse(x - 34 * s, y + 6 * s, 34 * s, 20 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y, 48 * s, 27 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + 40 * s, y + 4 * s, 38 * s, 22 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + 78 * s, y + 9 * s, 28 * s, 17 * s, 0, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function makeOtherCyclist() {
+      const speedKmh = clamp(randNormal(39, 6.2), 26, 52);
+      const rel = speedKmh - state.speed;
+      // If the other rider is faster, they enter from behind and pass us; if slower,
+      // we catch them from the front. Near-equal speeds are randomized for variety.
+      const fromLeft = Math.abs(rel) < 1.2 ? Math.random() < 0.5 : rel > 0;
+      // Visual road perspective: right/outer lane is nearer and larger; left/inner lane is farther and smaller.
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const laneY = side > 0 ? rand(34, 58) : -rand(34, 58);
+      const kit = [
+        ['#0d47a1', '#f5f7fb', '#ef5350'],
+        ['#101827', '#8bd7ff', '#52ffd5'],
+        ['#202020', '#ffd166', '#ff6b5f'],
+        ['#152015', '#72d572', '#e8f3ff'],
+        ['#20132d', '#d66dff', '#ffffff']
+      ][Math.floor(Math.random() * 5)];
+      return {
+        x: fromLeft ? -220 - rand(0, 180) : W + 220 + rand(0, 180),
+        speed: speedKmh,
+        side,
+        laneY,
+        scale: rand(0.96, 1.04),
+        wheel: rand(0, Math.PI * 2),
+        crank: rand(0, Math.PI * 2),
+        kit,
+        age: 0,
+        maxAge: rand(24, 40)
+      };
+    }
+
+    function scheduleNextOtherCyclist(baseDelay = null) {
+      // Moderately spaced: enough traffic to feel like a video game, not enough to clutter the physiology panel.
+      state.nextCyclistAt = state.t + (baseDelay ?? rand(3.8, 6.8));
+    }
+
+    function makePeloton() {
+      const speedKmh = clamp(randNormal(48, 4.6), 40, 55);
+      const rel = speedKmh - state.speed;
+      const fromLeft = Math.abs(rel) < 1.2 ? Math.random() < 0.5 : rel > 0;
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const laneY = side > 0 ? rand(28, 56) : -rand(34, 58);
+      const count = Math.floor(rand(2, 6)); // 2–5 people
+      const direction = fromLeft ? 1 : -1;
+
+      // Peloton riders should be close, but not visually stacked.
+      // Use bike geometry from drawOtherCyclist(): wheelbase ≈ 2.24*bs, wheel radius ≈ 0.44*bs.
+      // The target gap is about 1/3 wheel diameter between the following rider's front wheel
+      // and the preceding rider's rear wheel, like a tight but readable paceline.
+      const compact = window.matchMedia('(max-width: 920px)').matches;
+      const portraitCompact = compact && H > W;
+      const baseTrafficScale = portraitCompact
+        ? Math.min(W, H) * .118
+        : compact
+          ? Math.min(W, H) * .165
+          : Math.min(W, H) * .18;
+      const perspectiveScale = clamp(1 + laneY / 220, 0.72, 1.24);
+      const avgBs = baseTrafficScale * perspectiveScale * 0.80;
+      const wheelR = avgBs * 0.44;
+      const wheelbase = avgBs * 2.24;
+      const targetWheelGap = (wheelR * 2) / 3;
+      const spacing = (wheelbase + wheelR * 2 + targetWheelGap) * rand(0.96, 1.06);
+      const kits = [
+        ['#0d47a1', '#e8f3ff', '#52ffd5'],
+        ['#202020', '#ffd166', '#ff6b5f'],
+        ['#1b4332', '#72d572', '#f5f7fb'],
+        ['#3a0ca3', '#d66dff', '#ffffff'],
+        ['#111827', '#8bd7ff', '#ef5350']
+      ];
+      return {
+        x: fromLeft ? -280 - rand(0, 240) : W + 280 + rand(0, 240),
+        speed: speedKmh,
+        side,
+        laneY,
+        fromLeft,
+        spacing,
+        age: 0,
+        maxAge: rand(30, 48),
+        members: Array.from({ length: count }, (_, i) => ({
+          offsetX: -i * spacing * direction + rand(-8, 8),
+          offsetY: (i % 2 === 0 ? -1 : 1) * rand(0, 7),
+          scale: rand(0.94, 1.04),
+          wheel: rand(0, Math.PI * 2),
+          crank: rand(0, Math.PI * 2),
+          kit: kits[(i + Math.floor(Math.random() * kits.length)) % kits.length]
+        }))
+      };
+    }
+
+    function scheduleNextPeloton(baseDelay = null) {
+      // Less common than single riders, but frequent enough to appear during normal play.
+      state.nextPelotonAt = state.t + (baseDelay ?? rand(12.0, 20.0));
+    }
+
+    function expandPelotonRiders(group) {
+      return group.members.map((member, index) => ({
+        x: group.x + member.offsetX,
+        speed: group.speed,
+        side: group.side,
+        laneY: group.laneY + member.offsetY,
+        scale: member.scale,
+        wheel: member.wheel,
+        crank: member.crank,
+        kit: member.kit,
+        age: group.age,
+        maxAge: group.maxAge,
+        pelotonIndex: index
+      }));
+    }
+
+    function updateOtherCyclists(dt) {
+      if (!gameStarted) return;
+
+      if (state.t >= state.nextCyclistAt && state.otherCyclists.length < 4) {
+        state.otherCyclists.push(makeOtherCyclist());
+        scheduleNextOtherCyclist();
+      } else if (state.t >= state.nextCyclistAt) {
+        scheduleNextOtherCyclist(rand(1.8, 3.6));
+      }
+
+      // Peloton encounter: lower chance than single riders, 2–5 people riding front-to-back.
+      if (state.t >= state.nextPelotonAt && state.pelotons.length < 1) {
+        state.pelotons.push(makePeloton());
+        scheduleNextPeloton();
+      } else if (state.t >= state.nextPelotonAt) {
+        scheduleNextPeloton(rand(5.0, 9.0));
+      }
+
+      const pxPerKmh = 7.2;
+      for (const rider of state.otherCyclists) {
+        const relativeSpeed = rider.speed - state.speed;
+        rider.x += relativeSpeed * pxPerKmh * dt;
+        rider.age += dt;
+        rider.wheel += (rider.speed / 3.6) / 0.34 * dt;
+        rider.crank += clamp(rider.speed / 0.40, 45, 135) / 60 * Math.PI * 2 * dt;
+      }
+
+      for (const group of state.pelotons) {
+        const relativeSpeed = group.speed - state.speed;
+        group.x += relativeSpeed * pxPerKmh * dt;
+        group.age += dt;
+        for (const member of group.members) {
+          member.wheel += (group.speed / 3.6) / 0.34 * dt;
+          member.crank += clamp(group.speed / 0.40, 55, 145) / 60 * Math.PI * 2 * dt;
+        }
+      }
+
+      // Keep cyclists as long as any part of their bike/rider could still be visible.
+      // This fixes the near-equal-pace case: a rider holding the same speed beside you should not vanish by age.
+      const singleExitMargin = Math.max(360, Math.min(W, H) * 0.62);
+      state.otherCyclists = state.otherCyclists.filter(rider =>
+        rider.x > -singleExitMargin && rider.x < W + singleExitMargin
+      );
+
+      state.pelotons = state.pelotons.filter(group => {
+        const memberOffsets = group.members.map(m => m.offsetX);
+        const minOffset = Math.min(...memberOffsets);
+        const maxOffset = Math.max(...memberOffsets);
+        const groupExitMargin = Math.max(420, Math.min(W, H) * 0.72);
+        const leftMost = group.x + minOffset - groupExitMargin;
+        const rightMost = group.x + maxOffset + groupExitMargin;
+        return rightMost > 0 && leftMost < W;
+      });
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      W = Math.max(480, rect.width);
+      H = Math.max(320, rect.height);
+      canvas.width = Math.floor(W * DPR);
+      canvas.height = Math.floor(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      if (window.__cyclingStateReady) resetClouds();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const state = {
+      t: 0,
+      last: performance.now(),
+      taps: [],
+      cadence: 0,
+      speed: 0,
+      power: 0,
+      targetCadence: 0,
+      cp: 100,
+      gly: 100,
+      aerobic: 0,
+      aeroShare: 100,
+      lactate: 1.2,
+      finger: 0,
+      hr: 80,
+      hrDrive: 0,
+      hrSlowDrive: 0,
+      sustainedHighAerobicTime: 0,
+      sprintBurstTime: 0,
+      sprintIntentSignal: 0,
+      cpDrainSignal: 0,
+      cpWasAvailable: true,
+      cpBonkUntil: -999,
+      hrHoldDrive: 0,
+      lastActiveTime: -999,
+      heartPhase: 0,
+      distanceKm: 0,
+      wheelAngle: 0,
+      crankAngle: 0,
+      roadOffset: 0,
+      treeOffsetNear: 0,
+      treeOffsetFar: 0,
+      clouds: [],
+      otherCyclists: [],
+      pelotons: [],
+      nextCyclistAt: 2.5,
+      nextPelotonAt: 8.0,
+      history: [],
+      mix: { cp: 0, glycogen: 0, glucose: 0, ffa: 0, mt: 0 },
+      intensityPct: 0,
+      lt1: false,
+      lt2: false
+    };
+    window.__cyclingStateReady = true;
+    resetClouds();
+
+    function showBonkMessage() {
+      bonkMessage.classList.remove('hidden');
+      clearTimeout(bonkHideTimer);
+      bonkHideTimer = setTimeout(() => bonkMessage.classList.add('hidden'), 2000);
+    }
+
+    function registerTap(ev) {
+      if (!gameStarted) return;
+      if (state.t < state.cpBonkUntil) {
+        if (ev) ev.preventDefault();
+        return;
+      }
+      if (ev) ev.preventDefault();
+      const now = performance.now() / 1000;
+      state.taps.push(now);
+      while (state.taps.length && now - state.taps[0] > 10) state.taps.shift();
+      tapButton.classList.add('active');
+      setTimeout(() => tapButton.classList.remove('active'), 70);
+    }
+
+    tapButton.addEventListener('pointerdown', registerTap, { passive: false });
+    window.addEventListener('keydown', e => {
+      if (e.code === 'Space' && !e.repeat) registerTap(e);
+    });
+    window.addEventListener('keydown', e => {
+      if (!gameStarted && (e.code === 'Space' || e.key === 'Enter')) {
+        e.preventDefault();
+      }
+    });
+
+    function startGame() {
+      gameStarted = true;
+      state.otherCyclists = [];
+      state.pelotons = [];
+      scheduleNextOtherCyclist(1.9);
+      scheduleNextPeloton(rand(7.0, 12.0));
+      introOverlay.classList.add('hidden');
+      tapButton.focus({ preventScroll: true });
+    }
+
+    startButton.addEventListener('click', startGame);
+    startButton.addEventListener('pointerdown', e => e.stopPropagation(), { passive: true });
+
+    function desiredCadenceFromTapRate(tap10) {
+      // 20 taps/10 s ≈ 85 rpm; 40 taps/10 s ≈ 115 rpm; very fast tapping opens an explosive sprint range.
+      if (tap10 <= 0.5) return 0;
+      if (tap10 <= 20) return tap10 * 4.25;
+      if (tap10 <= 40) return 85 + (tap10 - 20) * 1.50;
+      return 115 + (tap10 - 40) * 4.00;
+    }
+
+    function fuelMixFromIntensity(intensityPct, cpFlux) {
+      // Piecewise interpolation inspired by the supplied chart:
+      // 25% VO2max: FFA dominant; 65%: mixed; 85%: glycogen dominant.
+      const p = clamp(intensityPct, 0, 100);
+      let glycogen, glucose, ffa, mt;
+      if (p <= 25) {
+        const t = p / 25;
+        glycogen = 2 + 8 * t;
+        glucose = 2 + 6 * t;
+        ffa = 86 - 6 * t;
+        mt = 10 - 2 * t;
+      } else if (p <= 65) {
+        const t = (p - 25) / 40;
+        glycogen = 10 + 28 * t;
+        glucose = 8 + 4 * t;
+        ffa = 80 - 50 * t;
+        mt = 2 + 18 * t;
+      } else {
+        const t = clamp((p - 65) / 20, 0, 1);
+        glycogen = 38 + 22 * t;
+        glucose = 12 + 2 * t;
+        ffa = 30 - 13 * t;
+        mt = 20 - 12 * t;
+      }
+
+      // Lactate/threshold pressure shifts carbohydrate source toward muscle glycogen.
+      const thresholdBias = clamp((state.lactate - 2.0) / 7.0, 0, 1);
+      glycogen += 8 * thresholdBias;
+      ffa -= 6 * thresholdBias;
+      mt -= 2 * thresholdBias;
+
+      // During a very short all-out sprint, ATP-CP can transiently dominate total ATP supply.
+      // Therefore cpFlux is allowed to rise far above the old teaching cap of 18%.
+      const cpShare = clamp(cpFlux, 0, 85);
+      const substrateTotal = Math.max(1, glycogen + glucose + ffa + mt);
+      const remaining = 100 - cpShare;
+      return {
+        cp: cpShare,
+        glycogen: remaining * glycogen / substrateTotal,
+        glucose: remaining * glucose / substrateTotal,
+        ffa: remaining * ffa / substrateTotal,
+        mt: remaining * mt / substrateTotal
+      };
+    }
+
+    function physiologicalUpdate(dt) {
+      const now = performance.now() / 1000;
+      while (state.taps.length && now - state.taps[0] > 10) state.taps.shift();
+      const cpBonked = state.t < state.cpBonkUntil;
+      if (cpBonked) state.taps.length = 0;
+      const tap10 = cpBonked ? 0 : state.taps.length;
+      const tapShort = cpBonked ? 0 : state.taps.filter(t => now - t <= 1.20).length;
+      const tapMedium = cpBonked ? 0 : state.taps.filter(t => now - t <= 2.50).length;
+      const tapShortRate = tapShort / 1.20;
+      const tapMediumRate = tapMedium / 2.50;
+      const tapTenRate = tap10 / 10;
+
+      const rawDesired = cpBonked ? 0 : clamp(desiredCadenceFromTapRate(tap10), 0, 178);
+      const recentTap = state.taps.length ? now - state.taps[state.taps.length - 1] : Infinity;
+      const coasting = recentTap > 1.35;
+      state.targetCadence = cpBonked ? 0 : coasting ? rawDesired * Math.max(0, 1 - (recentTap - 1.35) / 3.5) : rawDesired;
+
+      // Finger fatigue: fast tapping is itself a local muscular task.
+      const fingerLoad = clamp((tap10 - 24) / 30, 0, 1);
+      const fingerRecovery = tap10 < 12 ? 0.12 : 0;
+      state.finger = clamp(state.finger + (fingerLoad * 23 - fingerRecovery * 44) * dt, 0, 100);
+      const neuromuscularPenalty = 1 - 0.14 * (state.finger / 100);
+
+      // Cycling inertia. Cadence does not instantly equal intention.
+      const accelRate = cpBonked ? 0.0 : 1.45 * neuromuscularPenalty;
+      const decelRate = cpBonked ? 2.60 : state.targetCadence < state.cadence ? 1.15 : accelRate;
+      state.cadence = smoothApproach(state.cadence, state.targetCadence, decelRate, dt);
+      if (state.targetCadence < 1 && state.cadence < 2) state.cadence = 0;
+
+      // Power is computed before updating speed, so a sudden sprint can affect speed in the same frame.
+      const cadenceIntensity = clamp(state.cadence / 115, 0, 1.70);
+      const tapIntensity = clamp(Math.max(tap10 / 48, tapShortRate / 5.6), 0, 1.65);
+      const accelerationStress = clamp((state.targetCadence - state.cadence) / 70, 0, 1.65);
+      const speedDrag = Math.pow(Math.max(0, state.speed) / 50, 3);
+      // Sprint intent should respond to a sudden change in tap rate, not wait for a full 10-second window.
+      // A 1.2-second window catches the player's decision to sprint; the 10-second window keeps sustained load.
+      // Treat 3–4 taps/s as threshold/severe aerobic-glycolytic work, not a true ATP-PC sprint.
+      // Sprint intent now requires an actual >5 taps/s burst, while still reacting quickly via the
+      // 1.2-second short window and a rate-jump detector.
+      const sprintGate = clamp((tapShortRate - 4.85) / 0.55, 0, 1);
+      const sprintSpike = sprintGate * clamp((tapShortRate - Math.max(tapMediumRate * 0.82, 4.35)) / 1.15, 0, 1);
+      const sprintIntentRaw = cpBonked ? 0 : clamp(Math.max(
+        (tapTenRate - 5.0) / 1.8,
+        (tapShortRate - 5.0) / 1.25,
+        (tapMediumRate - 4.85) / 1.45,
+        sprintSpike
+      ), 0, 1);
+      state.sprintIntentSignal = smoothApproach(state.sprintIntentSignal, sprintIntentRaw, sprintIntentRaw > state.sprintIntentSignal ? 8.5 : 1.55, dt);
+      const sprintIntent = state.sprintIntentSignal;
+      const anaerobicAvailability = clamp((state.cp * 0.72 + state.gly * 0.28) / 100, 0.20, 1);
+
+      // Mechanical demand. Tempo/threshold remains playable; all-out tapping can briefly reach 18.8 W/kg for an 80 kg rider.
+      const steadyPower = 42 + 255 * Math.pow(cadenceIntensity, 2.12) + 120 * speedDrag;
+      const startCost = 365 * accelerationStress * tapIntensity;
+      const sprintSurge = 790 * Math.pow(sprintIntent, 1.10) * anaerobicAvailability * neuromuscularPenalty;
+      state.power = (!cpBonked && state.cadence > 2) ? clamp(steadyPower + startCost + sprintSurge, 0, 1500) : 0;
+
+      // Flat-road speed model. At low speed, excess power produces a quick jump; near 50 km/h,
+      // aerodynamic power cost rises steeply and acceleration naturally flattens.
+      const physicsSpeedTarget = state.power > 2 ? speedFromPowerWatts(state.power) : 0;
+      const cadenceSpeedLimit = clamp(state.cadence * 0.43 + sprintIntent * 3.0, 0, 54);
+      const speedTarget = cpBonked ? 0 : clamp(Math.min(physicsSpeedTarget, cadenceSpeedLimit, 50), 0, 50);
+      const speedDragPenalty = clamp(Math.pow(state.speed / 50, 2.2), 0, 0.88);
+      const accelerating = speedTarget > state.speed;
+      const speedRate = accelerating
+        ? clamp((0.54 + 0.78 * sprintIntent + 0.18 * accelerationStress) * (1 - 0.58 * speedDragPenalty), 0.24, 1.45)
+        : clamp(0.22 + 0.30 * speedDragPenalty, 0.18, 0.56);
+      state.speed = smoothApproach(state.speed, speedTarget, speedRate, dt);
+      if (state.targetCadence < 1 || cpBonked) {
+        const coastingDrag = (1.25 + 0.020 * state.speed + 0.018 * state.speed * speedDragPenalty) * dt;
+        state.speed = Math.max(0, state.speed - coastingDrag);
+      }
+
+      // Aerobic oxygen uptake response. Absolute VO2-driven output rises toward a ceiling.
+      // The displayed value is NOT VO2 activation; it is a didactic relative ATP contribution.
+      // Mechanism used here:
+      //   rest/coasting: tiny ATP demand, almost all oxidative -> 100% aerobic share;
+      //   LT1 to LT2: oxidative metabolism remains important, but carbohydrate/glycolytic share rises;
+      //   above LT2/severe domain: anaerobic glycolysis and ATP-CP increase, so relative aerobic share drops;
+      //   sprint: short-duration charts are dominated by ATP-CP/glycolysis, not aerobic percentage.
+      const aerobicCeiling = 305; // trained recreational cyclist proxy
+      const demandFrac = clamp(state.power / aerobicCeiling, 0, 1.45);
+      const aerobicTarget = clamp(demandFrac * 100, 0, 108);
+      state.aerobic = smoothApproach(state.aerobic, aerobicTarget, aerobicTarget > state.aerobic ? 0.36 : 0.66, dt);
+
+      const aerobicWatts = aerobicCeiling * clamp(state.aerobic / 100, 0, 1.08);
+      const oxygenDeficit = Math.max(0, state.power - aerobicWatts);
+      const hardAboveLT1 = Math.max(0, state.power - 185);
+      const hardAboveLT2 = Math.max(0, state.power - 265);
+
+      // Threshold flags appear before ATP-CP reserve is critically depleted.
+      state.lt1 = state.power > 185 || state.lactate > 2.0 || tap10 > 20;
+      state.lt2 = state.power > 265 || state.lactate > 4.0 || tap10 > 30;
+
+      // Energy reservoir dynamics. At LT2-ish 3–4 taps/s, CP should be buffered and only drift
+      // slightly because oxidative phosphorylation + glycolysis carry most of the load. Rapid CP
+      // depletion is reserved for true sprint tapping (>5 taps/s) or very high W/kg surges.
+      const cpSprintGate = clamp((Math.max(tapShortRate, tapMediumRate, tapTenRate) - 4.85) / 0.95, 0, 1);
+      const powerSprintGate = clamp((state.power / BODY_MASS_KG - 5.0) / 2.0, 0, 1);
+      const cpHighIntensityGate = Math.max(cpSprintGate, powerSprintGate);
+      const thresholdCpLeak = clamp((state.power / BODY_MASS_KG - 3.2) / 1.4, 0, 1) * 0.55;
+      const cpDrainTarget = cpBonked ? 0 : (
+        (oxygenDeficit / 690) * 3.6 * (0.35 + 0.65 * cpHighIntensityGate) +
+        Math.pow(accelerationStress, 1.25) * 5.4 * (0.22 + 0.78 * cpHighIntensityGate) +
+        Math.pow(sprintIntent, 1.35) * 43.0 +
+        Math.pow(powerSprintGate, 1.45) * 18.0 +
+        hardAboveLT2 / 520 +
+        thresholdCpLeak
+      );
+      state.cpDrainSignal = smoothApproach(state.cpDrainSignal, cpDrainTarget, cpDrainTarget > state.cpDrainSignal ? 3.6 : 1.15, dt);
+      const cpDrain = state.cpDrainSignal;
+      const recoveryBoost = state.cadence > 45 && state.power < 205 ? 1.28 : 1.0;
+      const cpRecoverBase = cpBonked ? 16.0 : state.power < 150 ? 9.8 : state.power < 205 ? 7.2 : state.power < 265 ? 4.3 : state.power < 360 ? 3.1 : 1.55;
+      const lactateRecoveryPenalty = 1 - clamp((state.lactate - 3.0) / 13, 0, 0.45);
+      const cpRecover = cpRecoverBase * recoveryBoost * lactateRecoveryPenalty * (1 - clamp(state.power / 330, 0, 0.72));
+      state.cp = clamp(state.cp - cpDrain * dt + cpRecover * dt, 0, 100);
+      if (state.cp <= 0.15 && state.cpWasAvailable && !cpBonked) {
+        state.cp = 0;
+        state.cpWasAvailable = false;
+        state.cpBonkUntil = state.t + 2.0;
+        state.taps.length = 0;
+        state.targetCadence = 0;
+        state.sprintIntentSignal = 0;
+        state.cpDrainSignal = 0;
+        showBonkMessage();
+      }
+      if (state.cp > 6) state.cpWasAvailable = true;
+
+      const glycolyticFlux = clamp((oxygenDeficit + hardAboveLT1 * 0.55 + hardAboveLT2 * 0.72) / 405, 0, 2.25);
+
+      const powerKg = state.power / 80;
+      let aerobicShareTarget = 100;
+      if (state.power > 2) {
+        if (powerKg <= 1.2) {
+          aerobicShareTarget = 100 - (powerKg / 1.2) * 4;                    // rest to easy spin: 100 -> 96
+        } else if (powerKg <= 2.3) {
+          aerobicShareTarget = 96 - ((powerKg - 1.2) / 1.1) * 8;             // below LT1: 96 -> 88
+        } else if (powerKg <= 3.3) {
+          aerobicShareTarget = 88 - ((powerKg - 2.3) / 1.0) * 14;            // LT1 to LT2: 88 -> 74
+        } else if (powerKg <= 5.0) {
+          aerobicShareTarget = 74 - ((powerKg - 3.3) / 1.7) * 19;            // just above LT2: 74 -> 55
+        } else if (powerKg <= 8.0) {
+          aerobicShareTarget = 55 - ((powerKg - 5.0) / 3.0) * 17;            // severe domain: 55 -> 38
+        } else {
+          aerobicShareTarget = 38 - clamp((powerKg - 8.0) / 10.8, 0, 1) * 20; // sprint: toward ~18
+        }
+
+        const deficitPenalty = clamp(oxygenDeficit / Math.max(state.power, 1), 0, 1) * 16;
+        const glycolyticPenalty = clamp(glycolyticFlux / 2.25, 0, 1) * 10;
+        const accelerationPenalty = accelerationStress * 6;
+        const sprintPenalty = sprintIntent * 16;
+        aerobicShareTarget = clamp(aerobicShareTarget - deficitPenalty - glycolyticPenalty - accelerationPenalty - sprintPenalty, 15, 100);
+      }
+      state.aeroShare = state.power > 2
+        ? smoothApproach(state.aeroShare, aerobicShareTarget, aerobicShareTarget < state.aeroShare ? 1.25 : 0.65, dt)
+        : 100;
+
+      const glyDrain = glycolyticFlux * 4.9 + Math.max(0, tap10 - 31) * 0.07;
+      const glyRecover = state.power < 165 ? 2.35 : state.power < 215 ? 0.95 : 0.20;
+      state.gly = clamp(state.gly - glyDrain * dt + glyRecover * dt, 0, 100);
+
+      const lactateProduction = glycolyticFlux * 1.12 + Math.max(0, tap10 - 31) * 0.010;
+      const lactateClearance = (0.08 + 0.115 * clamp(state.aerobic / 100, 0, 1)) * Math.max(0, state.lactate - 1.1);
+      state.lactate = clamp(state.lactate + (lactateProduction - lactateClearance) * dt, 1.0, 15.5);
+
+      // Heart-rate kinetics: immediate cardiac response + slow component during sustained tempo/threshold work.
+      // Physiological teaching logic:
+      //   1) HR does not jump instantly; it follows power with a short lag.
+      //   2) At high aerobic / tempo intensity, HR continues to rise over tens of seconds because VO2,
+      //      sympathetic drive, temperature, lactate/H+ stress, and cardiovascular drift keep increasing.
+      //   3) After abrupt coasting, HR remains elevated briefly and then decays gradually.
+      const hrRest = 80, hrMax = 200;
+      const powerKgHR = state.power / BODY_MASS_KG;
+      let hrBaseDrive = 0;
+
+      if (state.power > 10) {
+        if (powerKgHR <= 1.2) {
+          hrBaseDrive = (powerKgHR / 1.2) * 0.18;                         // 80 -> ~102 bpm
+        } else if (powerKgHR <= 2.3) {
+          hrBaseDrive = 0.18 + ((powerKgHR - 1.2) / 1.1) * 0.24;           // ~102 -> ~130 bpm
+        } else if (powerKgHR <= 3.3) {
+          hrBaseDrive = 0.42 + ((powerKgHR - 2.3) / 1.0) * 0.16;           // ~130 -> ~150 bpm
+        } else if (powerKgHR <= 4.6) {
+          hrBaseDrive = 0.58 + ((powerKgHR - 3.3) / 1.3) * 0.17;           // LT2/tempo: ~150 -> ~170 bpm
+        } else if (powerKgHR <= 6.5) {
+          hrBaseDrive = 0.75 + ((powerKgHR - 4.6) / 1.9) * 0.15;           // severe domain: ~170 -> ~188 bpm
+        } else {
+          hrBaseDrive = 0.90 + clamp((powerKgHR - 6.5) / 12.3, 0, 1) * 0.10;
+        }
+      }
+
+      const lactateHrStress = clamp((state.lactate - 2.0) / 7.0, 0, 1);
+      hrBaseDrive = clamp(hrBaseDrive + lactateHrStress * 0.06, 0, 1);
+
+      if (state.power > 10) {
+        state.lastActiveTime = state.t;
+      }
+
+      const highAerobicStress = clamp((powerKgHR - 2.3) / 2.6, 0, 1);
+      if (state.power > 10 && powerKgHR > 2.3) {
+        state.sustainedHighAerobicTime = clamp(state.sustainedHighAerobicTime + dt, 0, 240);
+      } else {
+        state.sustainedHighAerobicTime = Math.max(0, state.sustainedHighAerobicTime - dt * 2.0);
+      }
+
+      // Slow HR component becomes visible after several seconds and is clear by ~30-60 s of tempo/threshold load.
+      const durationFactor = clamp((state.sustainedHighAerobicTime - 6) / 54, 0, 1);
+      const slowTarget = state.power > 10
+        ? clamp((0.07 + 0.13 * highAerobicStress) * durationFactor + lactateHrStress * 0.05, 0, 0.24)
+        : 0;
+      const slowRate = slowTarget > state.hrSlowDrive ? (0.028 + 0.024 * highAerobicStress) : 0.055;
+      state.hrSlowDrive = smoothApproach(state.hrSlowDrive, slowTarget, slowRate, dt);
+
+      const holdingHigh = state.power <= 10 && state.t - state.lastActiveTime < 15;
+      const activeDriveTarget = clamp(hrBaseDrive + state.hrSlowDrive, 0, 1);
+      if (state.power > 10) {
+        state.hrHoldDrive = Math.max(state.hrHoldDrive, state.hrDrive, activeDriveTarget);
+      }
+
+      const hrDriveTarget = state.power > 10 ? activeDriveTarget : holdingHigh ? state.hrHoldDrive : 0;
+      const hrDriveRate = hrDriveTarget > state.hrDrive ? 0.42 : holdingHigh ? 0.018 : 0.085;
+      state.hrDrive = smoothApproach(state.hrDrive, hrDriveTarget, hrDriveRate, dt);
+      if (!holdingHigh && state.power <= 10) {
+        state.hrHoldDrive = smoothApproach(state.hrHoldDrive, 0, 0.07, dt);
+        state.hrSlowDrive = smoothApproach(state.hrSlowDrive, 0, 0.055, dt);
+      }
+
+      const hrTarget = hrRest + (hrMax - hrRest) * state.hrDrive;
+      state.hr = smoothApproach(state.hr, hrTarget, hrTarget > state.hr ? 0.38 : 0.09, dt);
+      state.hr = clamp(state.hr, hrRest, hrMax);
+      state.heartPhase = (state.heartPhase + (state.hr / 60) * dt) % 1;
+
+      // Metabolic feedback.
+      const fatigueFactor = (1 - clamp((30 - state.cp) / 115, 0, .16)) * (1 - clamp((25 - state.gly) / 130, 0, .14)) * (1 - clamp((state.lactate - 8) / 62, 0, .17));
+      state.cadence *= fatigueFactor;
+      state.speed *= (0.997 + 0.003 * fatigueFactor);
+      state.distanceKm += state.speed * dt / 3600;
+
+      state.wheelAngle += (state.speed / 3.6) / 0.34 * dt;
+      state.crankAngle += state.cadence / 60 * Math.PI * 2 * dt;
+      state.roadOffset = (state.roadOffset + state.speed * dt * 13) % 120;
+      state.treeOffsetNear = (state.treeOffsetNear + state.speed * dt * 22) % 260;
+      state.treeOffsetFar = (state.treeOffsetFar + state.speed * dt * 8) % 260;
+      updateClouds(dt);
+      updateOtherCyclists(dt);
+
+      state.intensityPct = clamp(state.power / aerobicCeiling * 100, 0, 200);
+
+      // ATP-CP contribution in the substrate bar/plot:
+      // - moderate riding: only a small transient ATP-CP fraction;
+      // - very short all-out bursts (>5 taps/s) can show a very high ATP-CP contribution;
+      // - as the burst continues for several seconds, ATP-CP falls and glycolytic contribution rises.
+      const burstSeverity = clamp(Math.max(
+        (tapTenRate - 4.5) / 1.2,
+        (tapShortRate - 4.2) / 1.4,
+        (tapMediumRate - 4.0) / 1.8,
+        (state.cadence - 128) / 42,
+        (state.power / BODY_MASS_KG - 4.8) / 3.5,
+        sprintIntent
+      ), 0, 1);
+      const burstCondition = burstSeverity > 0.10 && state.power > 260;
+      if (burstCondition) {
+        state.sprintBurstTime = clamp(state.sprintBurstTime + dt, 0, 60);
+      } else {
+        state.sprintBurstTime = Math.max(0, state.sprintBurstTime - dt * 3.0);
+      }
+
+      const baselineCpShare = clamp((oxygenDeficit / 34) + accelerationStress * 12 + Math.max(0, tapShortRate - 3.0) * 4.2 + sprintSpike * 10, 0, 28);
+      const cpReserveFactor = 0.35 + 0.65 * (state.cp / 100);
+      const sprintCpShare = burstSeverity > 0
+        ? (3 + 92 * Math.exp(-state.sprintBurstTime / 11)) * burstSeverity * cpReserveFactor
+        : 0;
+      const cpFluxShare = clamp(Math.max(baselineCpShare, sprintCpShare), 0, 85);
+      state.mix = fuelMixFromIntensity(Math.min(state.intensityPct, 100), cpFluxShare);
+
+      state.history.push({
+        cpReserve: state.cp,
+        glyReserve: state.gly,
+        aero: state.aeroShare,
+        lac: state.lactate,
+        hr: state.hr,
+        mixCp: state.mix.cp,
+        mixGlycogen: state.mix.glycogen,
+        mixGlucose: state.mix.glucose,
+        mixFfa: state.mix.ffa,
+        mixMt: state.mix.mt
+      });
+      if (state.history.length > 180) state.history.shift();
+
+      return { tap10, oxygenDeficit, glycolyticFlux };
+    }
+
+    function heartRateZone(hr) {
+      // Colors follow the reference HR-zone palette: warm-up gray, easy blue, aerobic green, threshold yellow/orange, maximum red.
+      if (hr < 120) return { name: 'Z1 Warm-up/Recovery', color: 'rgba(190,190,190,.20)', border: 'rgba(190,190,190,.50)', panel: 'rgba(28,28,28,0.58)', aura: '#bdbdbd' };
+      if (hr < 140) return { name: 'Z2 Easy', color: 'rgba(75,125,220,.20)', border: 'rgba(75,125,220,.52)', panel: 'rgba(12,22,45,0.62)', aura: '#4b7ddc' };
+      if (hr < 160) return { name: 'Z3 Aerobic', color: 'rgba(65,225,75,.20)', border: 'rgba(65,225,75,.52)', panel: 'rgba(8,35,18,0.62)', aura: '#41e14b' };
+      if (hr < 180) return { name: 'Z4 Threshold', color: 'rgba(255,205,70,.24)', border: 'rgba(255,190,60,.58)', panel: 'rgba(42,31,8,0.62)', aura: '#ffc646' };
+      return { name: 'Z5 Maximum/VO₂', color: 'rgba(255,68,75,.25)', border: 'rgba(255,68,75,.62)', panel: 'rgba(42,12,15,0.64)', aura: '#ff444b' };
+    }
+
+    function powerKgZone(powerKg) {
+      // Didactic W/kg zones for this simulator, mapped to the cycling power-zone palette.
+      if (powerKg < 1.2) return { name: 'Z1 Active Recovery', color: 'rgba(100,240,245,.22)', border: 'rgba(100,240,245,.56)', panel: 'rgba(7,31,35,0.60)', aura: '#64f0f5' };
+      if (powerKg < 2.3) return { name: 'Z2 Endurance', color: 'rgba(130,178,245,.22)', border: 'rgba(130,178,245,.56)', panel: 'rgba(12,24,48,0.62)', aura: '#82b2f5' };
+      if (powerKg < 3.3) return { name: 'Z3 Tempo', color: 'rgba(98,240,112,.22)', border: 'rgba(98,240,112,.56)', panel: 'rgba(9,39,20,0.62)', aura: '#62f070' };
+      if (powerKg < 4.0) return { name: 'Z4 Sweet Spot', color: 'rgba(255,245,82,.24)', border: 'rgba(255,245,82,.60)', panel: 'rgba(46,43,8,0.62)', aura: '#fff552' };
+      if (powerKg < 5.0) return { name: 'Z5 Threshold', color: 'rgba(255,184,77,.25)', border: 'rgba(255,184,77,.62)', panel: 'rgba(45,27,7,0.64)', aura: '#ffb84d' };
+      if (powerKg < 6.5) return { name: 'Z6 VO₂max', color: 'rgba(255,88,66,.26)', border: 'rgba(255,88,66,.64)', panel: 'rgba(48,15,10,0.64)', aura: '#ff5842' };
+      return { name: 'Z7 Anaerobic Sprint', color: 'rgba(240,40,170,.28)', border: 'rgba(240,40,170,.66)', panel: 'rgba(48,8,36,0.66)', aura: '#f028aa' };
+    }
+
+    function updateDOM(tap10) {
+      $('speed').textContent = state.speed.toFixed(1);
+      $('cadence').textContent = Math.round(state.cadence);
+      const currentPowerKg = state.power / BODY_MASS_KG;
+      $('powerKg').textContent = currentPowerKg.toFixed(1);
+      const pwz = powerKgZone(currentPowerKg);
+      $('powerZone').textContent = pwz.name;
+      $('powerZone').style.background = pwz.color;
+      $('powerMetric').style.borderColor = pwz.border;
+      $('powerMetric').style.background = pwz.panel;
+      $('distance').textContent = state.distanceKm.toFixed(2);
+      $('cpVal').textContent = Math.round(state.cp);
+      $('glyVal').textContent = Math.round(state.gly);
+      $('aeroVal').textContent = Math.round(clamp(state.aeroShare, 0, 100));
+      $('lacVal').textContent = state.lactate.toFixed(1);
+      $('hrVal').textContent = Math.round(state.hr);
+      const hrz = heartRateZone(state.hr);
+      $('hrZone').textContent = hrz.name;
+      $('hrZone').style.background = hrz.color;
+      $('hrMetric').style.borderColor = hrz.border;
+      $('hrMetric').style.background = hrz.panel;
+      const beat = Math.exp(-Math.pow(state.heartPhase / 0.115, 2)) + 0.42 * Math.exp(-Math.pow((state.heartPhase - 0.24) / 0.075, 2));
+      $('heartIcon').style.transform = `scale(${(1 + 0.22 * beat).toFixed(3)})`;
+      $('intensityVal').textContent = Math.round(state.intensityPct);
+
+      $('cpBar').style.width = `${state.cp}%`;
+      $('glyBar').style.width = `${state.gly}%`;
+      $('aeroBar').style.width = `${clamp(state.aeroShare, 0, 100)}%`;
+      $('lacBar').style.width = `${clamp((state.lactate - 1) / 14.5 * 100, 0, 100)}%`;
+
+      const mix = state.mix;
+      $('segCp').style.width = `${mix.cp}%`;
+      $('segGlycogen').style.width = `${mix.glycogen}%`;
+      $('segGlucose').style.width = `${mix.glucose}%`;
+      $('segFfa').style.width = `${mix.ffa}%`;
+      $('segMt').style.width = `${mix.mt}%`;
+      $('mixCp').textContent = Math.round(mix.cp);
+      $('mixGlycogen').textContent = Math.round(mix.glycogen);
+      $('mixGlucose').textContent = Math.round(mix.glucose);
+      $('mixFfa').textContent = Math.round(mix.ffa);
+      $('mixMt').textContent = Math.round(mix.mt);
+
+      $('lt1Box').className = 'threshold' + (state.lt1 ? ' warn1' : '');
+      $('lt2Box').className = 'threshold' + (state.lt2 ? ' warn2' : '');
+
+      let name, text;
+      if (state.power < 25) {
+        name = 'Ready / Coasting';
+        text = 'Even at rest or while coasting, the body still uses energy. Because total ATP demand is very low, it is almost entirely supplied by aerobic oxidation, so relative aerobic ATP is 100%.';
+      } else if (tap10 < 16 && state.power < 185) {
+        name = 'Easy Aerobic Pace';
+        text = 'At low intensity, aerobic oxidation dominates. Plasma free fatty acids contribute more, lactate stays low, and ATP-CP can keep recovering during steady pedaling.';
+      } else if (!state.lt2 && tap10 <= 24 && state.power < 260) {
+        name = state.lt1 ? 'LT1 / Endurance Stress' : 'Sustainable Endurance Zone';
+        text = state.lt1 ? 'You are near or above LT1: still sustainable, but carbohydrate use and lactate turnover are increasing.' : 'This is close to the endurance sweet pace of about 20 taps per 10 seconds. Relative aerobic ATP remains high, so it can be sustained for a long time.';
+      } else if (!state.lt2) {
+        name = 'Tempo Riding / High Metabolic Stress';
+        text = 'Oxygen demand is high but still controlled. Relative aerobic contribution begins to fall, glycolytic contribution rises, and CP drains slowly at a stable cadence with partial recovery possible.';
+      } else if (tap10 < 36 || state.power < 380) {
+        name = 'LT2 / Threshold Warning';
+        text = 'Lactate production is starting to exceed clearance. Muscle glycogen and anaerobic glycolysis contribute much more. Absolute aerobic output may approach a plateau, but its relative contribution should fall to about 50–75%, not stay near 100%.';
+      } else {
+        name = 'Anaerobic Sprint';
+        text = 'All-out tapping triggers explosive anaerobic output. Peak power can briefly approach 18.8 W/kg. Aerobic output is limited by VO₂ kinetics and its ceiling, so relative aerobic contribution falls, ATP-CP drops rapidly, and lactate rises quickly.';
+      }
+      $('zoneName').textContent = name;
+      $('zoneText').textContent = text;
+    }
+
+    function drawTree(x, baseY, scale, blur = 0) {
+      ctx.save();
+      if (blur) ctx.globalAlpha = .55;
+      ctx.fillStyle = blur ? '#295b3f' : '#1f6b42';
+      ctx.beginPath();
+      ctx.ellipse(x, baseY - 46 * scale, 22 * scale, 38 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(x - 15 * scale, baseY - 38 * scale, 18 * scale, 28 * scale, -0.3, 0, Math.PI * 2);
+      ctx.ellipse(x + 16 * scale, baseY - 36 * scale, 17 * scale, 30 * scale, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = blur ? '#5b3d26' : '#6b3f22';
+      ctx.fillRect(x - 4 * scale, baseY - 28 * scale, 8 * scale, 32 * scale);
+      ctx.restore();
+    }
+
+    function drawOtherCyclist(rider, baseY, baseScale) {
+      const cy = baseY + rider.laneY;
+      // Perspective scale follows lateral lane distance: outer/right riders are nearer/larger,
+      // inner/left riders are farther/smaller.
+      const perspectiveScale = clamp(1 + rider.laneY / 220, 0.72, 1.24);
+      const s = baseScale * rider.scale * perspectiveScale;
+      const bs = s * 0.80;
+      const cx = rider.x;
+      const rear = {x: cx - bs*1.12, y: cy};
+      const front = {x: cx + bs*1.12, y: cy};
+      const wheelR = bs * 0.44;
+      const bb = {x: cx - bs*0.04, y: cy - bs*0.12};
+      const seat = {x: cx - bs*0.38, y: cy - bs*0.90};
+      const headTop = {x: cx + bs*0.70, y: cy - bs*0.86};
+      const headBottom = {x: cx + bs*0.78, y: cy - bs*0.58};
+      const hip = {x: seat.x + bs*0.03, y: seat.y - bs*0.10};
+      const shoulder = {x: cx + bs*0.02, y: cy - bs*1.44};
+      const head = {x: cx + bs*0.18, y: cy - bs*1.72};
+      // Fade in only. Do not fade out by time: traffic should disappear only after it is fully off-screen.
+      const alpha = clamp(rider.age / 0.8, 0, 1);
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.92;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Small lane shadow makes the pass-by movement feel like an arcade cycling game.
+      ctx.fillStyle = 'rgba(0,0,0,.20)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + wheelR * 0.60, bs * 1.70, bs * 0.20, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (const w of [rear, front]) {
+        ctx.strokeStyle = '#071018';
+        ctx.lineWidth = 5.4;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, wheelR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(230,237,243,.64)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, wheelR - 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(230,237,243,.38)';
+        ctx.lineWidth = 0.8;
+        for (let i = 0; i < 10; i++) {
+          const a = rider.wheel + i * Math.PI / 5;
+          ctx.beginPath();
+          ctx.moveTo(w.x, w.y);
+          ctx.lineTo(w.x + Math.cos(a) * wheelR * 0.78, w.y + Math.sin(a) * wheelR * 0.78);
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = '#10151d';
+      ctx.lineWidth = 5.4;
+      ctx.beginPath();
+      ctx.moveTo(rear.x, rear.y); ctx.lineTo(bb.x, bb.y);
+      ctx.moveTo(rear.x, rear.y); ctx.lineTo(seat.x, seat.y);
+      ctx.moveTo(bb.x, bb.y); ctx.lineTo(seat.x, seat.y);
+      ctx.moveTo(seat.x, seat.y); ctx.lineTo(headTop.x, headTop.y);
+      ctx.moveTo(headBottom.x, headBottom.y); ctx.lineTo(bb.x, bb.y);
+      ctx.moveTo(headTop.x, headTop.y); ctx.lineTo(headBottom.x, headBottom.y);
+      ctx.moveTo(headBottom.x, headBottom.y); ctx.lineTo(front.x, front.y);
+      ctx.stroke();
+      ctx.strokeStyle = rider.kit[1];
+      ctx.lineWidth = 1.7;
+      ctx.stroke();
+
+      ctx.strokeStyle = '#10151d';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      ctx.moveTo(seat.x - bs*0.16, seat.y - bs*0.10);
+      ctx.lineTo(seat.x + bs*0.18, seat.y - bs*0.11);
+      ctx.moveTo(headTop.x, headTop.y);
+      ctx.quadraticCurveTo(headTop.x + bs*0.20, headTop.y + bs*0.00, headTop.x + bs*0.34, headTop.y + bs*0.12);
+      ctx.stroke();
+
+      const a = rider.crank;
+      const crankLen = bs*0.32;
+      const p1 = {x: bb.x + Math.cos(a) * crankLen, y: bb.y + Math.sin(a) * crankLen};
+      const p2 = {x: bb.x + Math.cos(a + Math.PI) * crankLen, y: bb.y + Math.sin(a + Math.PI) * crankLen};
+      function kneePoint(pedal, phaseShift = 0) {
+        const bend = Math.sin(a + phaseShift);
+        return {
+          x: hip.x + (pedal.x - hip.x) * 0.52 + bs * 0.055 * bend,
+          y: hip.y + (pedal.y - hip.y) * 0.50 - bs * (0.28 - 0.04 * bend)
+        };
+      }
+      const knee1 = kneePoint(p1, 0);
+      const knee2 = kneePoint(p2, Math.PI);
+      ctx.strokeStyle = '#eac09a';
+      ctx.lineWidth = 5.8;
+      ctx.beginPath();
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(knee1.x, knee1.y); ctx.lineTo(p1.x, p1.y);
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(knee2.x, knee2.y); ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      const jersey = ctx.createLinearGradient(hip.x, hip.y, shoulder.x, shoulder.y);
+      jersey.addColorStop(0, rider.kit[0]);
+      jersey.addColorStop(0.55, rider.kit[1]);
+      jersey.addColorStop(1, rider.kit[2]);
+      ctx.fillStyle = jersey;
+      ctx.beginPath();
+      ctx.moveTo(hip.x - bs*0.12, hip.y);
+      ctx.lineTo(shoulder.x - bs*0.15, shoulder.y + bs*0.02);
+      ctx.lineTo(shoulder.x + bs*0.15, shoulder.y - bs*0.03);
+      ctx.lineTo(hip.x + bs*0.15, hip.y + bs*0.03);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(6,14,22,.55)';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+
+      // Arms and head.
+      ctx.strokeStyle = '#eac09a';
+      ctx.lineWidth = 4.8;
+      ctx.beginPath();
+      ctx.moveTo(shoulder.x + bs*0.02, shoulder.y + bs*0.03);
+      ctx.quadraticCurveTo(shoulder.x + bs*0.22, shoulder.y + bs*0.17, headTop.x + bs*0.31, headTop.y + bs*0.14);
+      ctx.stroke();
+      ctx.fillStyle = '#eac09a';
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, bs*0.15, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.moveTo(head.x - bs*0.20, head.y - bs*0.03);
+      ctx.quadraticCurveTo(head.x - bs*0.10, head.y - bs*0.24, head.x + bs*0.14, head.y - bs*0.20);
+      ctx.quadraticCurveTo(head.x + bs*0.22, head.y - bs*0.12, head.x + bs*0.19, head.y - bs*0.01);
+      ctx.closePath();
+      ctx.fill();
+
+      // Speed tag, subtle but useful for explaining why passing occurs.
+      if (s > 54 && alpha > 0.75) {
+        ctx.font = `${Math.max(10, bs*0.12)}px system-ui, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,.72)';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.round(rider.speed)} km/h`, cx, cy - bs*2.05);
+      }
+
+      ctx.restore();
+    }
+
+    function drawScene() {
+      ctx.clearRect(0,0,W,H);
+
+      const compact = window.matchMedia('(max-width: 920px)').matches;
+      const portraitCompact = compact && H > W;
+      const roadY = portraitCompact ? H * .46 : compact ? H * .64 : H * .70;
+      const riderX = portraitCompact ? W * .50 : W * .48;
+      const riderY = portraitCompact ? roadY + 10 : compact ? roadY + 28 : roadY + 38;
+      const riderScale = portraitCompact ? Math.min(W, H) * .118 : compact ? Math.min(W, H) * .165 : Math.min(W, H) * .18;
+
+      // Keep all cyclists at their existing lateral/depth positions, but make the road visually wider.
+      // This prevents inner-lane riders from appearing on the mountain/grass in the portrait mobile layout.
+      const roadTopY = portraitCompact
+        ? Math.max(H * .34, roadY - Math.min(118, H * .085))
+        : compact
+          ? Math.max(H * .52, roadY - Math.min(86, H * .070))
+          : Math.max(H * .61, roadY - Math.min(66, H * .050));
+
+      // Push landscape elements farther back toward the horizon so the enlarged road owns the foreground.
+      const mountain1Start = portraitCompact ? H * .36 : H * .49;
+      const mountain1Wave = portraitCompact ? H * .31 : H * .42;
+      const mountain1Bottom = roadTopY + (portraitCompact ? H * .030 : H * .045);
+      const mountain2Start = portraitCompact ? H * .43 : H * .56;
+      const mountain2Wave = portraitCompact ? H * .37 : H * .50;
+      const mountain2Bottom = roadTopY + (portraitCompact ? H * .045 : H * .060);
+      const roadCurve = portraitCompact ? 26 : compact ? 38 : 46;
+      const laneNear = portraitCompact ? 42 : compact ? 66 : 78;
+      const laneCurve = portraitCompact ? 66 : compact ? 96 : 112;
+      const laneFar = portraitCompact ? 40 : compact ? 62 : 76;
+      const streakStart = portraitCompact ? 16 : 35;
+
+      const sky = ctx.createLinearGradient(0, 0, 0, H * .72);
+      sky.addColorStop(0, '#8bd7ff');
+      sky.addColorStop(.55, '#d8f5ff');
+      sky.addColorStop(1, '#b8ddb4');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      // Sun and clouds.
+      ctx.fillStyle = 'rgba(255,235,150,.75)';
+      ctx.beginPath(); ctx.arc(W * .86, H * .13, portraitCompact ? 34 : 42, 0, Math.PI * 2); ctx.fill();
+      if (!state.clouds.length) resetClouds();
+      state.clouds.forEach(drawCloud);
+
+      // Mountains.
+      ctx.fillStyle = '#5f9d78';
+      ctx.beginPath();
+      ctx.moveTo(0, mountain1Start);
+      for (let x=0; x<=W; x+=90) ctx.lineTo(x, mountain1Wave + Math.sin(x*.012)*28);
+      ctx.lineTo(W, mountain1Bottom); ctx.lineTo(0, mountain1Bottom); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#38704f';
+      ctx.beginPath();
+      ctx.moveTo(0, mountain2Start);
+      for (let x=0; x<=W; x+=120) ctx.lineTo(x, mountain2Wave + Math.cos(x*.010)*22);
+      ctx.lineTo(W, mountain2Bottom); ctx.lineTo(0, mountain2Bottom); ctx.closePath(); ctx.fill();
+
+      // Far and near tree parallax to mirror speed. Their bases are now tied to roadTopY,
+      // so the road covers the trunks and keeps trees visually behind the cycling lane.
+      for (let i = 0; i < 9; i++) {
+        const x = (i * 180 - state.treeOffsetFar) % (W + 220) - 90;
+        drawTree(x, roadTopY + (portraitCompact ? 24 : 18), 0.58 + (i % 3) * 0.045, true);
+      }
+      for (let i = 0; i < 10; i++) {
+        const x = (i * 150 - state.treeOffsetNear) % (W + 260) - 120;
+        drawTree(x, roadTopY + (portraitCompact ? 40 : 48) + (i % 2) * (portraitCompact ? 5 : 7), portraitCompact ? 0.70 + (i % 4) * 0.045 : 0.78 + (i % 4) * 0.055, false);
+      }
+
+      // Road. The visual top edge is moved upward, while riderY is unchanged.
+      ctx.fillStyle = '#2b3039';
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      ctx.lineTo(W, H);
+      ctx.lineTo(W, roadTopY);
+      ctx.quadraticCurveTo(W*.5, roadTopY + roadCurve, 0, roadTopY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,.55)';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([45, 42]);
+      ctx.lineDashOffset = -state.roadOffset;
+      ctx.beginPath();
+      ctx.moveTo(0, roadY + laneNear);
+      ctx.quadraticCurveTo(W*.5, roadY + laneCurve, W, roadY + laneFar);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Speed streaks.
+      if (state.speed > 8) {
+        ctx.strokeStyle = `rgba(255,255,255,${clamp(state.speed/70, .12, .42)})`;
+        ctx.lineWidth = 2;
+        for (let i=0; i<18; i++) {
+          const y = roadTopY + streakStart + (i * 23) % Math.max(40, (H-roadTopY-streakStart));
+          const x = (i * 121 - state.roadOffset * 4) % (W + 160) - 80;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 45 + state.speed * 1.5, y); ctx.stroke();
+        }
+      }
+
+      const trafficRiders = state.otherCyclists.concat(state.pelotons.flatMap(expandPelotonRiders));
+      const trafficDrawList = trafficRiders
+        .map(rider => ({ rider, y: riderY + rider.laneY }))
+        .sort((a, b) => a.y - b.y);
+      trafficDrawList.filter(item => item.y <= riderY).forEach(item => drawOtherCyclist(item.rider, riderY, riderScale));
+      drawCyclist(riderX, riderY, riderScale);
+      trafficDrawList.filter(item => item.y > riderY).forEach(item => drawOtherCyclist(item.rider, riderY, riderScale));
+      drawPowerAura();
+    }
+
+    function drawCyclist(cx, cy, s) {
+      const bs = s * 0.80; // bike reduced ~20%
+      const rear = {x: cx - bs*1.18, y: cy};
+      const front = {x: cx + bs*1.18, y: cy};
+      const wheelR = bs * 0.50;
+      const bb = {x: cx - bs*0.05, y: cy - bs*0.12};
+      const seatClamp = {x: cx - bs*0.42, y: cy - bs*1.04};
+      const saddleRear = {x: seatClamp.x - bs*0.18, y: seatClamp.y - bs*0.16};
+      const saddleNose = {x: seatClamp.x + bs*0.17, y: seatClamp.y - bs*0.15};
+      const saddleMid = {x: (saddleRear.x + saddleNose.x) / 2, y: (saddleRear.y + saddleNose.y) / 2};
+      const headTop = {x: cx + bs*0.78, y: cy - bs*0.96};
+      const headBottom = {x: headTop.x + bs*0.10, y: headTop.y + bs*0.31};
+      const stem = {x: headTop.x + bs*0.09, y: headTop.y - bs*0.02};
+      const hood1 = {x: stem.x + bs*0.23, y: stem.y + bs*0.13};
+      const hood2 = {x: stem.x + bs*0.16, y: stem.y + bs*0.19};
+
+      // Rider geometry: seated pelvis on saddle, slightly longer torso.
+      const hip = {x: saddleMid.x + bs*0.02, y: saddleMid.y - bs*0.01};
+      const shoulder = {x: cx + bs*0.02, y: cy - bs*1.62};
+      const head = {x: cx + bs*0.21, y: cy - bs*1.93};
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Wheels.
+      for (const w of [rear, front]) {
+        ctx.strokeStyle = '#080b10';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, wheelR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#d8e0ea';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, wheelR - 4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#0c1119';
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, bs*0.06, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(230,237,243,.48)';
+        ctx.lineWidth = 1.0;
+        for (let i = 0; i < 20; i++) {
+          const ang = state.wheelAngle + i * Math.PI / 10;
+          ctx.beginPath();
+          ctx.moveTo(w.x, w.y);
+          ctx.lineTo(w.x + Math.cos(ang) * wheelR * 0.84, w.y + Math.sin(ang) * wheelR * 0.84);
+          ctx.stroke();
+        }
+      }
+
+      // Frame.
+      ctx.beginPath();
+      ctx.moveTo(rear.x, rear.y); ctx.lineTo(bb.x, bb.y);
+      ctx.moveTo(rear.x, rear.y); ctx.lineTo(seatClamp.x, seatClamp.y);
+      ctx.moveTo(bb.x, bb.y); ctx.lineTo(seatClamp.x, seatClamp.y);
+      ctx.moveTo(seatClamp.x, seatClamp.y); ctx.lineTo(headTop.x, headTop.y);
+      ctx.moveTo(headBottom.x, headBottom.y); ctx.lineTo(bb.x, bb.y);
+      ctx.moveTo(headTop.x, headTop.y); ctx.lineTo(headBottom.x, headBottom.y);
+      ctx.moveTo(headBottom.x, headBottom.y); ctx.lineTo(front.x, front.y);
+      ctx.strokeStyle = '#0b1220';
+      ctx.lineWidth = 7.4;
+      ctx.stroke();
+      ctx.strokeStyle = '#62dbff';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+
+      // Seatpost and saddle.
+      ctx.strokeStyle = '#10151d';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(seatClamp.x, seatClamp.y); ctx.lineTo(seatClamp.x + bs*0.015, seatClamp.y - bs*0.15);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(saddleRear.x, saddleRear.y);
+      ctx.quadraticCurveTo(saddleMid.x, saddleMid.y - bs*0.05, saddleNose.x, saddleNose.y);
+      ctx.stroke();
+
+      // Stem and drop bars.
+      ctx.beginPath();
+      ctx.moveTo(headTop.x, headTop.y); ctx.lineTo(stem.x, stem.y);
+      ctx.strokeStyle = '#10151d';
+      ctx.lineWidth = 4.2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(stem.x - bs*0.02, stem.y);
+      ctx.quadraticCurveTo(stem.x + bs*0.16, stem.y - bs*0.03, hood1.x, hood1.y - bs*0.03);
+      ctx.quadraticCurveTo(hood1.x + bs*0.05, hood1.y + bs*0.08, hood1.x - bs*0.01, hood1.y + bs*0.15);
+      ctx.quadraticCurveTo(hood1.x - bs*0.04, hood1.y + bs*0.19, hood2.x - bs*0.12, hood2.y + bs*0.02);
+      ctx.strokeStyle = '#0b1220';
+      ctx.lineWidth = 5.5;
+      ctx.stroke();
+
+      // Crankset and pedals.
+      const a = state.crankAngle;
+      const crankLen = bs*0.37;
+      const p1 = {x: bb.x + Math.cos(a) * crankLen, y: bb.y + Math.sin(a) * crankLen};
+      const p2 = {x: bb.x + Math.cos(a + Math.PI) * crankLen, y: bb.y + Math.sin(a + Math.PI) * crankLen};
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(bb.x, bb.y); ctx.lineTo(p1.x, p1.y);
+      ctx.moveTo(bb.x, bb.y); ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      ctx.strokeStyle = '#0b1220';
+      ctx.lineWidth = 3.6;
+      ctx.beginPath(); ctx.arc(bb.x, bb.y, bs*0.12, 0, Math.PI * 2); ctx.stroke();
+      for (const p of [p1, p2]) {
+        ctx.strokeStyle = '#1b2432';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(p.x - bs*0.05, p.y); ctx.lineTo(p.x + bs*0.05, p.y); ctx.stroke();
+      }
+
+      // Shorts / pelvis on saddle.
+      ctx.fillStyle = '#141b2b';
+      ctx.beginPath();
+      ctx.moveTo(hip.x - bs*0.17, hip.y - bs*0.03);
+      ctx.lineTo(hip.x + bs*0.15, hip.y - bs*0.05);
+      ctx.lineTo(hip.x + bs*0.12, hip.y + bs*0.20);
+      ctx.lineTo(hip.x - bs*0.15, hip.y + bs*0.20);
+      ctx.closePath();
+      ctx.fill();
+
+      // Torso / jersey: slightly longer upper body.
+      const jersey = ctx.createLinearGradient(hip.x, hip.y, shoulder.x, shoulder.y);
+      jersey.addColorStop(0, '#0d47a1');
+      jersey.addColorStop(0.56, '#f5f7fb');
+      jersey.addColorStop(1, '#ef5350');
+      ctx.fillStyle = jersey;
+      ctx.beginPath();
+      ctx.moveTo(hip.x - bs*0.14, hip.y - bs*0.02);
+      ctx.lineTo(shoulder.x - bs*0.18, shoulder.y + bs*0.03);
+      ctx.lineTo(shoulder.x + bs*0.17, shoulder.y - bs*0.03);
+      ctx.lineTo(hip.x + bs*0.18, hip.y + bs*0.04);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(6,14,22,.58)';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      // Legs: elongated so seated rider reaches pedals naturally.
+      function kneePoint(pedal, phaseShift = 0) {
+        const bend = Math.sin(a + phaseShift);
+        return {
+          x: hip.x + (pedal.x - hip.x) * 0.50 + bs * 0.07 * bend,
+          y: hip.y + (pedal.y - hip.y) * 0.48 - bs * (0.34 - 0.06 * bend)
+        };
+      }
+      const knee1 = kneePoint(p1, 0);
+      const knee2 = kneePoint(p2, Math.PI);
+      ctx.strokeStyle = '#f1c79d';
+      ctx.lineWidth = 8.5;
+      ctx.beginPath();
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(knee1.x, knee1.y); ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hip.x, hip.y); ctx.lineTo(knee2.x, knee2.y); ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      // Shoes.
+      ctx.fillStyle = '#0a0f18';
+      ctx.beginPath(); ctx.ellipse(p1.x + bs*0.03, p1.y, bs*0.16, bs*0.05, a, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(p2.x + bs*0.03, p2.y, bs*0.16, bs*0.05, a + Math.PI, 0, Math.PI*2); ctx.fill();
+
+      // Arms: slightly bent, gripping the handlebar hoods.
+      const elbow1 = {x: shoulder.x + bs*0.17, y: shoulder.y + bs*0.14};
+      const elbow2 = {x: shoulder.x + bs*0.09, y: shoulder.y + bs*0.20};
+      const hand1 = {x: hood1.x - bs*0.01, y: hood1.y + bs*0.01};
+      const hand2 = {x: hood2.x - bs*0.01, y: hood2.y + bs*0.02};
+      ctx.strokeStyle = '#f1c79d';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(shoulder.x + bs*0.03, shoulder.y + bs*0.03); ctx.lineTo(elbow1.x, elbow1.y); ctx.lineTo(hand1.x, hand1.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(shoulder.x - bs*0.02, shoulder.y + bs*0.05); ctx.lineTo(elbow2.x, elbow2.y); ctx.lineTo(hand2.x, hand2.y);
+      ctx.stroke();
+      ctx.fillStyle = '#0a0f18';
+      ctx.beginPath(); ctx.arc(hand1.x, hand1.y, bs*0.04, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(hand2.x, hand2.y, bs*0.04, 0, Math.PI*2); ctx.fill();
+
+      // Neck.
+      ctx.fillStyle = '#f1c79d';
+      ctx.fillRect(head.x - bs*0.038, head.y + bs*0.11, bs*0.076, bs*0.12);
+
+      // Head and face expression changes linearly with heart rate.
+      const hrFace = clamp(state.hr, 80, 200);
+      const smile = clamp((160 - hrFace) / 40, 0, 1);          // Z1-Z2 smile, fades through Z3
+      const frown = clamp((hrFace - 160) / 20, 0, 1) * (1 - clamp((hrFace - 180) / 20, 0, 1)); // Z4 unhappy
+      const struggle = clamp((hrFace - 180) / 20, 0, 1);       // Z5 open-mouth struggling
+      const eyeSquint = clamp((hrFace - 140) / 60, 0, 1);
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, bs*0.18, 0, Math.PI*2);
+      ctx.fill();
+
+      // Ear.
+      ctx.fillStyle = '#d8b08a';
+      ctx.beginPath();
+      ctx.arc(head.x - bs*0.19, head.y + bs*0.01, bs*0.032, 0, Math.PI*2);
+      ctx.fill();
+
+      // Brows.
+      ctx.strokeStyle = '#2b1b16';
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(head.x - bs*0.11, head.y - bs*0.10 - bs*0.01*smile);
+      ctx.lineTo(head.x - bs*0.03, head.y - bs*(0.10 - 0.015*smile - 0.035*frown - 0.05*struggle));
+      ctx.moveTo(head.x + bs*0.00, head.y - bs*(0.10 - 0.015*smile - 0.035*frown - 0.05*struggle));
+      ctx.lineTo(head.x + bs*0.08, head.y - bs*0.10 - bs*0.01*smile);
+      ctx.stroke();
+
+      // Eyes.
+      const leftEyeX = head.x - bs*0.055;
+      const rightEyeX = head.x + bs*0.035;
+      const eyeY = head.y - bs*0.015;
+      const eyeHalf = bs*0.024;
+      const eyeOpen = lerp(bs*0.012, bs*0.003, eyeSquint * 0.9 + struggle * 0.35);
+      const eyeCurve = bs*(0.008*smile - 0.003*frown - 0.004*struggle);
+      ctx.strokeStyle = '#0d121b';
+      ctx.lineWidth = 1.6;
+      for (const ex of [leftEyeX, rightEyeX]) {
+        ctx.beginPath();
+        ctx.moveTo(ex - eyeHalf, eyeY);
+        ctx.quadraticCurveTo(ex, eyeY + eyeCurve, ex + eyeHalf, eyeY);
+        ctx.stroke();
+        if (eyeOpen > bs*0.004) {
+          ctx.beginPath();
+          ctx.moveTo(ex - eyeHalf*0.92, eyeY + eyeOpen);
+          ctx.quadraticCurveTo(ex, eyeY + eyeOpen + eyeCurve*0.5, ex + eyeHalf*0.92, eyeY + eyeOpen);
+          ctx.stroke();
+        }
+      }
+
+      // Nose.
+      ctx.strokeStyle = '#7d4c2f';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(head.x + bs*0.012, head.y + bs*0.005);
+      ctx.lineTo(head.x + bs*0.038, head.y + bs*0.045);
+      ctx.stroke();
+
+      // Mouth: smile -> neutral -> unhappy -> open panting mouth.
+      const mouthBaseY = head.y + bs*0.078;
+      const mouthLeftX = head.x - bs*0.020;
+      const mouthRightX = head.x + bs*0.060;
+      const mouthCurve = bs*(0.038*smile - 0.032*frown - 0.010*struggle);
+      ctx.strokeStyle = '#7a2d2d';
+      ctx.lineWidth = 1.8;
+      ctx.save();
+      ctx.globalAlpha = 1 - struggle;
+      ctx.beginPath();
+      ctx.moveTo(mouthLeftX, mouthBaseY);
+      ctx.quadraticCurveTo(head.x + bs*0.022, mouthBaseY + mouthCurve, mouthRightX, mouthBaseY - bs*0.004*frown);
+      ctx.stroke();
+      ctx.restore();
+
+      if (struggle > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = struggle;
+        ctx.fillStyle = '#4a1616';
+        ctx.beginPath();
+        ctx.ellipse(head.x + bs*0.026, mouthBaseY + bs*0.002, bs*(0.028 + 0.022*struggle), bs*(0.016 + 0.050*struggle), 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#7a2d2d';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Slight under-eye strain lines at high HR.
+        ctx.strokeStyle = 'rgba(13,18,27,0.55)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(leftEyeX - bs*0.020, eyeY + bs*0.045);
+        ctx.lineTo(leftEyeX + bs*0.018, eyeY + bs*0.048);
+        ctx.moveTo(rightEyeX - bs*0.020, eyeY + bs*0.045);
+        ctx.lineTo(rightEyeX + bs*0.018, eyeY + bs*0.048);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Helmet.
+      ctx.fillStyle = '#161c27';
+      ctx.beginPath();
+      ctx.moveTo(head.x - bs*0.24, head.y - bs*0.03);
+      ctx.quadraticCurveTo(head.x - bs*0.12, head.y - bs*0.29, head.x + bs*0.14, head.y - bs*0.24);
+      ctx.quadraticCurveTo(head.x + bs*0.26, head.y - bs*0.18, head.x + bs*0.22, head.y - bs*0.02);
+      ctx.quadraticCurveTo(head.x + bs*0.05, head.y - bs*0.08, head.x - bs*0.16, head.y - bs*0.08);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#eef6ff';
+      ctx.beginPath();
+      ctx.ellipse(head.x, head.y - bs*0.15, bs*0.12, bs*0.032, -0.06, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.22)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(head.x - bs*0.12, head.y - bs*0.18);
+      ctx.lineTo(head.x + bs*0.08, head.y - bs*0.18);
+      ctx.moveTo(head.x - bs*0.08, head.y - bs*0.11);
+      ctx.lineTo(head.x + bs*0.14, head.y - bs*0.11);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPowerAura() {
+      if (state.power < 80) return;
+      const alpha = clamp((state.power - 80) / 950, 0.08, 0.42);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = powerKgZone(state.power / BODY_MASS_KG).aura;
+      ctx.lineWidth = 4;
+      const x = W*.48, y = H*.64;
+      for (let i=0; i<5; i++) {
+        ctx.beginPath();
+        ctx.arc(x, y, 55 + i*22 + Math.sin(state.t*6+i)*7, -0.2, Math.PI*1.15);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawMiniChart() {
+      const cw = chart.width, ch = chart.height;
+      cctx.clearRect(0,0,cw,ch);
+      cctx.fillStyle = 'rgba(0,0,0,0.12)';
+      cctx.fillRect(0,0,cw,ch);
+      cctx.strokeStyle = 'rgba(255,255,255,.10)';
+      cctx.lineWidth = 1;
+      for (let y=18; y<ch; y+=18) {
+        cctx.beginPath();
+        cctx.moveTo(0,y);
+        cctx.lineTo(cw,y);
+        cctx.stroke();
+      }
+
+      const data = state.history;
+      if (data.length < 2) return;
+
+      function plot(key, color, width=2) {
+        cctx.strokeStyle = color;
+        cctx.lineWidth = width;
+        cctx.beginPath();
+        data.forEach((d, i) => {
+          const x = i / Math.max(1, data.length - 1) * cw;
+          const val = d[key] ?? 0;
+          const y = ch - clamp(val / 100, 0, 1) * (ch - 6) - 3;
+          if (i === 0) cctx.moveTo(x, y); else cctx.lineTo(x, y);
+        });
+        cctx.stroke();
+      }
+
+      // Realtime substrate contribution plot. These curves are taken directly from the same
+      // substrate percentages used in the stacked bar above, so the plot now matches the bar
+      // and better reflects exercise physiology: low intensity favors FFA/IMTG, while tempo,
+      // threshold, and severe exercise shift contribution toward carbohydrate, especially glycogen.
+      plot('mixCp', '#d7ecff', 1.8);
+      plot('mixGlycogen', '#4d90d0', 2.2);
+      plot('mixGlucose', '#de5545', 2.0);
+      plot('mixFfa', '#8ec66d', 2.2);
+      plot('mixMt', '#8a2a91', 2.0);
+    }
+
+    function frame(nowMs) {
+      const now = nowMs;
+      const dt = clamp((now - state.last) / 1000, 0, 0.05);
+      state.last = now;
+      state.t += dt;
+      const { tap10 } = physiologicalUpdate(dt);
+      drawScene();
+      drawMiniChart();
+      updateDOM(tap10);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
