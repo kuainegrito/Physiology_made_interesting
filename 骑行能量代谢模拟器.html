@@ -75,6 +75,27 @@
       backdrop-filter: blur(7px);
       border-radius: 16px;
       padding: 10px 12px;
+      position: relative;
+      overflow: visible;
+    }
+
+    #speedMetric { z-index: 31; }
+
+    .draftIndicator {
+      position: absolute;
+      left: 10px;
+      top: calc(100% + 7px);
+      z-index: 80;
+      opacity: 0;
+      pointer-events: none;
+      color: rgba(236, 250, 255, 0.98);
+      font-size: 12.5px;
+      font-weight: 950;
+      line-height: 1;
+      white-space: nowrap;
+      text-shadow: 0 2px 8px rgba(0,0,0,.75), 0 0 14px rgba(82,255,213,.52);
+      filter: drop-shadow(0 0 8px rgba(82,255,213,.36));
+      will-change: opacity;
     }
 
 
@@ -213,7 +234,9 @@
     }
 
     .helpText .zoneLine {
-      display: block;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
       margin: 5px 0;
     }
 
@@ -221,8 +244,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 92px;
       min-width: 92px;
-      margin-right: 7px;
+      margin-right: 0;
       padding: 2px 7px;
       border-radius: 999px;
       font-size: 12px;
@@ -267,6 +291,32 @@
       font-weight: 900;
       line-height: 1.2;
       margin: 2px 0 6px;
+    }
+
+    .maker {
+      display: block;
+      width: 100%;
+      grid-column: 1 / -1;
+      justify-self: center;
+      align-self: center;
+      font-size: 10.2px;
+      font-weight: 700;
+      line-height: 1.18;
+      color: rgba(233, 243, 255, 0.86);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: -2px auto 8px;
+    }
+
+    .introMaker {
+      font-size: clamp(16px, 2.1vw, 22px);
+      font-weight: 700;
+      line-height: 1.3;
+      color: rgba(233, 243, 255, 0.88);
+      text-align: center;
+      margin: -6px 0 16px;
     }
 
     .sub {
@@ -366,9 +416,12 @@
     .hrZonePill {
       display: inline-flex;
       align-items: center;
+      justify-content: flex-start;
+      align-self: flex-start;
       border-radius: 999px;
       padding: 3px 8px;
       margin-top: 4px;
+      margin-left: 0;
       font-size: 10.5px;
       font-weight: 900;
       background: rgba(255,255,255,.08);
@@ -750,6 +803,14 @@
       .passPill b { font-size: 13px; }
       .passPill em { font-size: 7.3px; }
 
+      .draftIndicator {
+        left: 5px;
+        top: calc(100% + 4px);
+        font-size: 9.2px;
+        text-shadow: 0 1px 6px rgba(0,0,0,.78), 0 0 10px rgba(82,255,213,.55);
+        filter: drop-shadow(0 0 7px rgba(82,255,213,.42));
+      }
+
       .hrZonePill, .powerZonePill { font-size: 7px; padding: 1px 4px; margin-top: 1px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
       .side {
@@ -767,6 +828,19 @@
         gap: 5px;
         background: rgba(8, 12, 18, 0.70);
         backdrop-filter: blur(8px);
+      }
+
+      .maker {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
+        font-size: clamp(9px, 2.65vw, 10.5px);
+        line-height: 1.15;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 0 auto 1px;
       }
 
       .title, .sub, .help, .zone { display: none; }
@@ -953,9 +1027,10 @@
   <div id="introOverlay" class="introOverlay" role="dialog" aria-modal="true" aria-label="游戏开始说明">
     <div class="introCard">
       <h1 class="introTitle">骑行能量代谢模拟器</h1>
+      <div class="introMaker">制作人：于快（yukuai@gmc.edu.cn）</div>
       <div class="help">
 
-<b> 介绍：</b> 通过模拟骑行过程中<b>不同强度</b> 下的能量代谢变化，本游戏可直观体验<b>  ATP-CP、无氧糖酵解与有氧系统的动态供能</b> ，以及乳酸、心率与局部疲劳的生理响应。<br><br><b>提示：</b>你可以点击对应矩形查看更多信息和运动生理学知识。<br><br><b> 操作：</b> 电脑端可按 <b>空格</b> 或点击<b>踩踏</b> 按钮，手机端需点击<b>踩踏</b> 按钮。<b>【强烈建议】尽量使用同一根手指连续操作，这样更容易体会局部疲劳与酸胀感。</b><br><br><b>参考点击频率：</b><br><b>-主动恢复:</b><b>1 次/秒</b>，对应踏频约 <b>50 rpm</b>、功体比约 <b>1.2 W/kg</b><br><b>-耐力节奏:</b> <b>约2 次/秒</b>，对应踏频约 <b>85 rpm</b>、功体比约 <b>2.5 W/kg</b><br><b>-冲刺节奏:</b> <b>&gt; 4 次/秒</b>，对应踏频 <b>&gt; 95 rpm</b>、功体比 <b>&gt; 4 W/kg</b>；当最近约1秒内突然超过 <b>5 次/秒</b> 时，系统会立即判定为冲刺意图。<br><br><b>省力小提示：</b>当屏幕中你前方有至少4名骑手，且你距离最靠后的前方骑手不超过约一辆车长时，可以借助尾流跟骑；一旦距离超过一辆车长，尾流消失。
+<b> 介绍：</b> 通过模拟骑行过程中<b>不同强度</b> 下的能量代谢变化，本游戏可直观体验<b>  ATP-CP、无氧糖酵解与有氧系统的动态供能</b> ，以及乳酸、心率与局部疲劳的生理响应。<br><br><b>提示：</b>点击对应矩形查看更多信息和运动生理学知识。<br><br><b> 操作：</b> 电脑端可按 <b>空格</b> 或点击<b>踩踏</b> 按钮，手机端需点击<b>踩踏</b> 按钮。<b>【强烈建议】尽量使用同一根手指连续操作，这样更容易体会局部疲劳与酸胀感。</b><br><br><b>参考点击频率：</b><br><b>-主动恢复:</b><b>1 次/秒</b>，对应踏频约 <b>50 rpm</b>、功体比约 <b>1.2 W/kg</b><br><b>-耐力节奏:</b> <b>约2 次/秒</b>，对应踏频约 <b>85 rpm</b>、功体比约 <b>2.5 W/kg</b><br><b>-冲刺节奏:</b> <b>&gt; 4 次/秒</b>，对应踏频 <b>&gt; 95 rpm</b>、功体比 <b>&gt; 4 W/kg</b>；当最近约1秒内突然超过 <b>5 次/秒</b> 时，系统会立即判定为冲刺意图。<br><br><b>省力小提示：</b>当屏幕中你前方有至少4名骑手，且你距离最靠后的前方骑手不超过约一辆车长时，可以借助尾流跟骑；一旦距离超过一辆车长，尾流消失。
       
       </div>
       <button id="startButton" class="startButton">确认并开始</button>
@@ -975,7 +1050,7 @@
       <canvas id="gameCanvas"></canvas>
       <div id="bonkMessage" class="bonkMessage hidden">你被拉爆啦：ATP-CP被榨干，只能先滑行恢复！</div>
       <div class="hud">
-        <div id="speedMetric" class="metric"><div class="label">速度</div><div class="value"><span id="speed">0.0</span><span class="unit">km/h</span></div></div>
+        <div id="speedMetric" class="metric"><div class="label">速度</div><div class="value"><span id="speed">0.0</span><span class="unit">km/h</span></div><div id="draftIndicator" class="draftIndicator">ℹ️尾流跟骑</div></div>
         <div id="cadenceMetric" class="metric"><div class="label">踏频</div><div class="value"><span id="cadence">0</span><span class="unit">rpm</span></div></div>
         <div id="powerMetric" class="metric powerMetric"><div class="label">功体比</div><div class="value"><span id="powerKg">0.0</span><span class="unit">W/kg</span></div><div id="powerZone" class="powerZonePill">Z1 主动恢复</div></div>
         <div id="hrMetric" class="metric hrMetric">
@@ -984,9 +1059,9 @@
             <div id="heartIcon" class="heartIcon">♥</div>
             <div class="hrHudText">
               <div class="value"><span id="hrVal">80</span><span class="unit">bpm</span></div>
-              <div id="hrZone" class="hrZonePill">Z1 恢复</div>
             </div>
           </div>
+          <div id="hrZone" class="hrZonePill">Z1 恢复</div>
         </div>
         <div id="distanceMetric" class="metric"><div class="label">距离</div><div class="value"><span id="distance">0.00</span><span class="unit">km</span></div></div>
       </div>
@@ -999,7 +1074,8 @@
 
     <aside class="side" aria-label="能量系统面板">
       <div class="title">骑行能量代谢模拟器</div>
-      <div class="sub">你可以点击对应矩形查看更多信息和运动生理学知识。</div>
+      <div class="maker">制作人：于快（yukuai@gmc.edu.cn）</div>
+      <div class="sub"><b>提示：</b>点击对应矩形查看更多信息和运动生理学知识。</div>
       
       <div class="thresholds">
         <div id="lt1Box" class="threshold">
@@ -1065,7 +1141,7 @@
 
       <div class="help">
   
-<b> 介绍：</b> 通过模拟骑行过程中<b>不同强度</b> 下的能量代谢变化，本游戏可直观体验<b>  ATP-CP、无氧糖酵解与有氧系统的动态供能</b> ，以及乳酸、心率与局部疲劳的生理响应。<br><br><b>提示：</b>你可以点击对应矩形查看更多信息和运动生理学知识。<br><br><b> 操作：</b> 电脑端可按 <b>空格</b> 或点击<b>踩踏</b> 按钮，手机端需点击<b>踩踏</b> 按钮。<b>【强烈建议】尽量使用同一根手指连续操作，这样更容易体会局部疲劳与酸胀感。</b><br><br><b>参考点击频率：</b><br><b>-主动恢复:</b><b>1 次/秒</b>，对应踏频约 <b>50 rpm</b>、功体比约 <b>1.2 W/kg</b><br><b>-耐力节奏:</b> <b>约2 次/秒</b>，对应踏频约 <b>85 rpm</b>、功体比约 <b>2.5 W/kg</b><br><b>-冲刺节奏:</b> <b>&gt; 4 次/秒</b>，对应踏频 <b>&gt; 95 rpm</b>、功体比 <b>&gt; 4 W/kg</b>；当最近约1秒内突然超过 <b>5 次/秒</b> 时，系统会立即判定为冲刺意图。<br><br><b>省力小提示：</b>当屏幕中你前方有至少4名骑手，且你距离最靠后的前方骑手不超过约一辆车长时，可以借助尾流跟骑；一旦距离超过一辆车长，尾流消失。
+<b> 介绍：</b> 通过模拟骑行过程中<b>不同强度</b> 下的能量代谢变化，本游戏可直观体验<b>  ATP-CP、无氧糖酵解与有氧系统的动态供能</b> ，以及乳酸、心率与局部疲劳的生理响应。<br><br><b>提示：</b>点击对应矩形查看更多信息和运动生理学知识。<br><br><b> 操作：</b> 电脑端可按 <b>空格</b> 或点击<b>踩踏</b> 按钮，手机端需点击<b>踩踏</b> 按钮。<b>【强烈建议】尽量使用同一根手指连续操作，这样更容易体会局部疲劳与酸胀感。</b><br><br><b>参考点击频率：</b><br><b>-主动恢复:</b><b>1 次/秒</b>，对应踏频约 <b>50 rpm</b>、功体比约 <b>1.2 W/kg</b><br><b>-耐力节奏:</b> <b>约2 次/秒</b>，对应踏频约 <b>85 rpm</b>、功体比约 <b>2.5 W/kg</b><br><b>-冲刺节奏:</b> <b>&gt; 4 次/秒</b>，对应踏频 <b>&gt; 95 rpm</b>、功体比 <b>&gt; 4 W/kg</b>；当最近约1秒内突然超过 <b>5 次/秒</b> 时，系统会立即判定为冲刺意图。<br><br><b>省力小提示：</b>当屏幕中你前方有至少4名骑手，且你距离最靠后的前方骑手不超过约一辆车长时，可以借助尾流跟骑；一旦距离超过一辆车长，尾流消失。
       
       </div>
     </aside>
@@ -1324,13 +1400,16 @@
       return singles.concat(groups).filter(rider => rider.x >= 0 && rider.x <= W);
     }
 
-    function computePelotonDraftRaw() {
+    function computePelotonDraftInfo() {
       // New peloton drafting rule:
       // If there are at least 4 visible cyclists in front of the player, and the
       // rearmost/front-nearest cyclist is within one bike length, the player gets
       // a draft. Once that nearest front cyclist is more than one bike length away,
       // the draft disappears. Riders that merely appear far ahead do not trigger it.
-      if (!gameStarted) return 0;
+      // The visual hint is linearly tied to this one-bike-length gap: closest = most
+      // visible; near one bike length = still readable, then fades out only after
+      // the draft is lost. Mechanical assist keeps a softer speed/lane affinity term.
+      if (!gameStarted) return { assist: 0, hint: 0 };
       const px = playerLineX();
       const bikeLength = playerBikeLengthPx();
       const sameLineBand = Math.max(8, Math.min(W, H) * 0.015);
@@ -1338,15 +1417,24 @@
         .map(rider => ({ ...rider, aheadPx: rider.x - px }))
         .filter(rider => rider.aheadPx > sameLineBand);
 
-      if (frontRiders.length < 4) return 0;
+      if (frontRiders.length < 4) return { assist: 0, hint: 0 };
       const nearestAhead = frontRiders.reduce((best, rider) => rider.aheadPx < best.aheadPx ? rider : best, frontRiders[0]);
-      if (nearestAhead.aheadPx > bikeLength) return 0;
+      if (nearestAhead.aheadPx > bikeLength) return { assist: 0, hint: 0 };
 
-      const distanceFactor = 1 - clamp((nearestAhead.aheadPx - sameLineBand) / Math.max(1, bikeLength - sameLineBand), 0, 1) * 0.35;
+      const visualDistanceFactor = clamp(1 - (nearestAhead.aheadPx - sameLineBand) / Math.max(1, bikeLength - sameLineBand), 0, 1);
       const speedAffinity = clamp(1 - Math.abs(nearestAhead.speed - state.speed) / 22, 0, 1);
       const speedFactor = 0.55 + 0.45 * speedAffinity;
       const laneFactor = 1 - clamp((Math.abs(nearestAhead.y) - 24) / 120, 0, 0.42);
-      return clamp(distanceFactor * speedFactor * laneFactor, 0, 1);
+      const assistDistanceFactor = 0.65 + 0.35 * visualDistanceFactor;
+      const visibleHint = 0.35 + 0.65 * visualDistanceFactor;
+      return {
+        assist: clamp(assistDistanceFactor * speedFactor * laneFactor, 0, 1),
+        hint: visibleHint
+      };
+    }
+
+    function computePelotonDraftRaw() {
+      return computePelotonDraftInfo().assist;
     }
 
     function makePassTracker(x) {
@@ -1493,6 +1581,7 @@
       aeroShare: 100,
       recoveryOxygenDebt: 0,
       draftSignal: 0,
+      draftHintOpacity: 0,
       lactate: 1.2,
       finger: 0,
       hr: 80,
@@ -1582,7 +1671,7 @@
     const helpItems = {
       speedMetric: {
         title: '速度',
-        text: '<b>速度</b>由当前功率、空气阻力、滚阻和自行车惯性共同决定。停止踩踏或被“拉爆”后不会立刻归零，而是像真实骑行一样先滑行，再被风阻和滚阻逐渐拖慢。'
+        text: '<b>速度</b>由当前功率、空气阻力、滚阻和自行车惯性共同决定。停止踩踏或被“拉爆”后不会立刻归零，而是像真实骑行一样先滑行，再被风阻和滚阻逐渐拖慢。<br><br><b>ℹ️尾流跟骑</b>：当前方至少4名骑手，且你距离最靠后的前方骑手不超过约一辆车长时，可借助尾流降低风阻；距离越近，提示越明显，同样点击频率下更容易保持速度和提速。超过一辆车长后，提示会在约2秒内淡出。'
       },
       cadenceMetric: {
         title: '踏频',
@@ -1810,8 +1899,11 @@
       ), 0, 1);
       state.sprintIntentSignal = smoothApproach(state.sprintIntentSignal, sprintIntentRaw, sprintIntentRaw > state.sprintIntentSignal ? 8.5 : 1.55, dt);
       const sprintIntent = state.sprintIntentSignal;
-      const draftRaw = computePelotonDraftRaw();
+      const draftInfo = computePelotonDraftInfo();
+      const draftRaw = draftInfo.assist;
       state.draftSignal = smoothApproach(state.draftSignal, draftRaw, draftRaw > state.draftSignal ? 4.6 : 2.2, dt);
+      state.draftHintOpacity = smoothApproach(state.draftHintOpacity, draftInfo.hint, draftInfo.hint > state.draftHintOpacity ? 1.45 : 1.55, dt);
+      if (draftInfo.hint <= 0 && state.draftHintOpacity < 0.015) state.draftHintOpacity = 0;
       const draftAssist = state.draftSignal;
       // Low glycolytic reserve should not cause an instant speed collapse. It first shifts
       // more emergency load onto ATP-CP; only when CP is also exhausted does the rider truly bonk.
@@ -2156,6 +2248,7 @@
 
     function updateDOM(tap10) {
       $('speed').textContent = state.speed.toFixed(1);
+      $('draftIndicator').style.opacity = clamp(state.draftHintOpacity, 0, 1).toFixed(3);
       $('cadence').textContent = Math.round(state.cadence);
       const currentPowerKg = state.power / BODY_MASS_KG;
       $('powerKg').textContent = currentPowerKg.toFixed(1);
@@ -2220,10 +2313,6 @@
       } else {
         name = '无氧冲刺';
         text = '全力点击会触发爆发性无氧输出。峰值可短暂接近18.8 W/kg；此时有氧输出受VO₂动力学和上限限制，相对占比下降，ATP–CP快速下降，乳酸迅速升高。';
-      }
-      if (state.draftSignal > 0.28 && state.power > 20) {
-        name = `${name} / 尾流跟骑`;
-        text = '集团尾流：你前方至少4名骑手形成尾流，且你距离最靠后的前方骑手不超过约一辆车长；同样点击频率下更容易保持速度和提速。' + text;
       }
       $('zoneName').textContent = name;
       $('zoneText').textContent = text;
