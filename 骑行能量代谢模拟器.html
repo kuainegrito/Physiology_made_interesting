@@ -80,6 +80,52 @@
 
     .hud .metric.helpable { pointer-events: auto; }
 
+    .passCounter {
+      position: absolute;
+      top: 112px;
+      right: 18px;
+      z-index: 21;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .passPill {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: rgba(8,12,18,0.62);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(7px);
+      box-shadow: 0 10px 28px rgba(0,0,0,.22);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .passPill b {
+      font-size: 18px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .passPill em {
+      font-style: normal;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .passWin { border-color: rgba(114, 213, 114, .42); }
+    .passWin b { color: var(--green); }
+    .passLose { border-color: rgba(255, 107, 95, .46); }
+    .passLose b { color: var(--red); }
+
     .metric .label {
       color: var(--muted);
       font-size: 12px;
@@ -686,6 +732,24 @@
       .hrHudRow { gap: 3px; }
       .heartIcon { font-size: 16px; filter: drop-shadow(0 0 7px rgba(255,107,95,.7)); }
       .hud .metric.helpable { pointer-events: auto; }
+
+      .passCounter {
+        top: 52px;
+        right: 6px;
+        gap: 4px;
+      }
+
+      .passPill {
+        padding: 4px 6px;
+        font-size: 8.3px;
+        gap: 3px;
+        border-radius: 10px;
+        background: rgba(8,12,18,0.68);
+      }
+
+      .passPill b { font-size: 13px; }
+      .passPill em { font-size: 7.3px; }
+
       .hrZonePill, .powerZonePill { font-size: 7px; padding: 1px 4px; margin-top: 1px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
       .side {
@@ -890,7 +954,7 @@
     <div class="introCard">
       <h1 class="introTitle">骑行能量代谢模拟器</h1>
       <div class="help">
-<b> 介绍：</b> 通过模拟骑行过程中<b>不同强度</b> 下的能量代谢变化，本游戏可直观体验<b>  ATP-CP、无氧糖酵解与有氧系统的动态供能</b> ，以及乳酸、心率与局部疲劳的生理响应。<br><br><b>提示：你可以点击对应矩形查看更多信息和运动生理学知识。</b><br><br><b> 操作：</b> 电脑端可按 <b>空格</b> 或点击<b>踩踏</b> 按钮，手机端需点击<b>踩踏</b> 按钮。建议尽量使用同一根手指连续操作，这样更容易体会局部疲劳与酸胀感。<br><br><b>参考点击频率：</b><br><b>-主动恢复:</b><b>1 次/秒</b>，对应踏频约 <b>50 rpm</b>、功体比约 <b>1.2 W/kg</b><br><b>-耐力节奏:</b> <b>约2 次/秒</b>，对应踏频约 <b>85 rpm</b>、功体比约 <b>2.5 W/kg</b><br><b>-冲刺节奏:</b> <b>&gt; 4 次/秒</b>，对应踏频 <b>&gt; 95 rpm</b>、功体比 <b>&gt; 4 W/kg</b>；当最近约1秒内突然超过 <b>5 次/秒</b> 时，系统会立即判定为冲刺意图。
+<b> 介绍：</b> 通过模拟骑行过程中<b>不同强度</b> 下的能量代谢变化，本游戏可直观体验<b>  ATP-CP、无氧糖酵解与有氧系统的动态供能</b> ，以及乳酸、心率与局部疲劳的生理响应。<br><br><b>提示：</b>你可以点击对应矩形查看更多信息和运动生理学知识。<br><br><b> 操作：</b> 电脑端可按 <b>空格</b> 或点击<b>踩踏</b> 按钮，手机端需点击<b>踩踏</b> 按钮。建议尽量使用同一根手指连续操作，这样更容易体会局部疲劳与酸胀感。<br><br><b>参考点击频率：</b><br><b>-主动恢复:</b><b>1 次/秒</b>，对应踏频约 <b>50 rpm</b>、功体比约 <b>1.2 W/kg</b><br><b>-耐力节奏:</b> <b>约2 次/秒</b>，对应踏频约 <b>85 rpm</b>、功体比约 <b>2.5 W/kg</b><br><b>-冲刺节奏:</b> <b>&gt; 4 次/秒</b>，对应踏频 <b>&gt; 95 rpm</b>、功体比 <b>&gt; 4 W/kg</b>；当最近约1秒内突然超过 <b>5 次/秒</b> 时，系统会立即判定为冲刺意图。
       </div>
       <button id="startButton" class="startButton">确认并开始</button>
     </div>
@@ -923,6 +987,10 @@
           </div>
         </div>
         <div id="distanceMetric" class="metric"><div class="label">距离</div><div class="value"><span id="distance">0.00</span><span class="unit">km</span></div></div>
+      </div>
+      <div id="passCounter" class="passCounter" aria-label="甩掉计数">
+        <div class="passPill passWin"><span>你已甩掉</span><b id="passedCount">0</b><em>人</em></div>
+        <div class="passPill passLose"><span>你被</span><b id="overtakenCount">0</b><em>人甩掉</em></div>
       </div>
       <button id="tapButton" class="tapButton">踩踏</button>
     </section>
@@ -1012,6 +1080,13 @@
     let gameStarted = false;
 
     const $ = id => document.getElementById(id);
+    function positionPassCounter() {
+      const hud = document.querySelector('.hud');
+      const panel = document.getElementById('passCounter');
+      if (!hud || !panel) return;
+      const gap = window.matchMedia('(max-width: 920px)').matches ? 7 : 9;
+      panel.style.top = `${hud.offsetTop + hud.offsetHeight + gap}px`;
+    }
     const BODY_MASS_KG = 80;
     const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
     const smoothApproach = (current, target, rate, dt) => current + (target - current) * (1 - Math.exp(-rate * dt));
@@ -1215,6 +1290,14 @@
       }));
     }
 
+    function registerCyclistExit(exitSide, count = 1) {
+      // Count only when a rider/group is finally removed by the system.
+      // Off-left means they ended behind the player: player completed the overtake.
+      // Off-right means they ended ahead of the player: they completed the overtake.
+      if (exitSide === 'left') state.passedCount += count;
+      if (exitSide === 'right') state.overtakenCount += count;
+    }
+
     function updateOtherCyclists(dt) {
       if (!gameStarted) return;
 
@@ -1255,9 +1338,15 @@
       // Keep cyclists as long as any part of their bike/rider could still be visible.
       // This fixes the near-equal-pace case: a rider holding the same speed beside you should not vanish by age.
       const singleExitMargin = Math.max(360, Math.min(W, H) * 0.62);
-      state.otherCyclists = state.otherCyclists.filter(rider =>
-        rider.x > -singleExitMargin && rider.x < W + singleExitMargin
-      );
+      state.otherCyclists = state.otherCyclists.filter(rider => {
+        const exitedLeft = rider.x <= -singleExitMargin;
+        const exitedRight = rider.x >= W + singleExitMargin;
+        if (exitedLeft || exitedRight) {
+          registerCyclistExit(exitedLeft ? 'left' : 'right', 1);
+          return false;
+        }
+        return true;
+      });
 
       state.pelotons = state.pelotons.filter(group => {
         const memberOffsets = group.members.map(m => m.offsetX);
@@ -1266,7 +1355,13 @@
         const groupExitMargin = Math.max(420, Math.min(W, H) * 0.72);
         const leftMost = group.x + minOffset - groupExitMargin;
         const rightMost = group.x + maxOffset + groupExitMargin;
-        return rightMost > 0 && leftMost < W;
+        const exitedLeft = rightMost <= 0;
+        const exitedRight = leftMost >= W;
+        if (exitedLeft || exitedRight) {
+          registerCyclistExit(exitedLeft ? 'left' : 'right', group.members.length);
+          return false;
+        }
+        return true;
       });
     }
 
@@ -1278,8 +1373,11 @@
       canvas.height = Math.floor(H * DPR);
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       if (window.__cyclingStateReady) resetClouds();
+      positionPassCounter();
+      setTimeout(positionPassCounter, 60);
     }
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', () => setTimeout(positionPassCounter, 220));
     resize();
 
     const state = {
@@ -1322,6 +1420,8 @@
       nextCyclistAt: 2.5,
       nextPelotonAt: 8.0,
       history: [],
+      passedCount: 0,
+      overtakenCount: 0,
       mix: { cp: 0, glycogen: 0, glucose: 0, ffa: 0, mt: 0 },
       intensityPct: 0,
       lt1: false,
@@ -1364,6 +1464,8 @@
       gameStarted = true;
       state.otherCyclists = [];
       state.pelotons = [];
+      state.passedCount = 0;
+      state.overtakenCount = 0;
       scheduleNextOtherCyclist(1.9);
       scheduleNextPeloton(rand(7.0, 12.0));
       introOverlay.classList.add('hidden');
@@ -1953,6 +2055,8 @@
       $('powerMetric').style.borderColor = pwz.border;
       $('powerMetric').style.background = pwz.panel;
       $('distance').textContent = state.distanceKm.toFixed(2);
+      $('passedCount').textContent = state.passedCount;
+      $('overtakenCount').textContent = state.overtakenCount;
       $('cpVal').textContent = Math.round(state.cp);
       $('glyVal').textContent = Math.round(state.gly);
       $('aeroVal').textContent = Math.round(clamp(state.aeroShare, 0, 100));
